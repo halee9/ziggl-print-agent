@@ -94,15 +94,17 @@ describe('buildTicketDoc', () => {
     expect(cash).not.toContain('VISA');
   });
 
-  it('aggregates server alerts with abbreviations: modifier qty × item qty', () => {
-    expect(doc).toContain('"!! CONFIRM:" |');
-    expect(doc).toContain('"4 Ex Spicy" |'); // 2(mod qty) × 2(item qty)
-    expect(doc).toContain('"1 GS Combo" |');
+  it('aggregates server alerts with FULL names (no header, no abbreviations)', () => {
+    expect(doc).not.toContain('CONFIRM'); // 헤더 라인 제거됨
+    expect(doc).toContain('"4 Extra Spicy Sauce" |'); // 2(mod qty) × 2(item qty), 풀네임
+    expect(doc).toContain('"1 Garlic Spicy Combo" |');
+    expect(doc).not.toContain('Ex Spicy" |'); // 약어 미사용
   });
 
-  it('omits CONFIRM block when no alerts configured', () => {
+  it('omits alert block when no alerts configured', () => {
     const noAlerts = buildTicketDoc(fixture, { ...baseOpts, menu: { menuItems: [], modifiers: [] } });
-    expect(noAlerts).not.toContain('CONFIRM');
+    expect(noAlerts).not.toContain('"4 Extra Spicy Sauce"');
+    expect(noAlerts).not.toContain('"1 Garlic Spicy Combo"');
   });
 
   it('renders NOTE; renders DELIVERY when present', () => {

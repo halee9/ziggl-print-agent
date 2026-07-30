@@ -186,22 +186,25 @@ export function buildTicketLayout(order: KDSOrder, opts: TicketOptions, baseCpl 
   }
   // customerPhone: 인쇄 제외 (브라우저 티켓의 print:hidden과 동일)
 
-  // ── Server alerts (⚠ CONFIRM — 약어 사용, 원본 text-lg font-black) ──
+  // ── Server alerts (확인 필요 항목 — 헤더 없이 굵은 카운트+풀네임만, 원본 text-lg font-black) ──
+  // serverAlert 여부는 menu-display 설정에서, 표기는 약어 대신 풀네임 (주방 약어는 티켓에선 낯섦)
   const alertMap = new Map<string, number>();
   for (const item of order.lineItems) {
     const qty = parseInt(item.quantity, 10) || 1;
-    const d = itemLabel(item.name, menu);
-    if (d.serverAlert) alertMap.set(d.label, (alertMap.get(d.label) ?? 0) + qty);
+    if (itemLabel(item.name, menu).serverAlert) {
+      alertMap.set(item.name, (alertMap.get(item.name) ?? 0) + qty);
+    }
     for (const raw of item.modifiers ?? []) {
       const mod = normalizeMod(raw);
-      const md = modifierLabel(mod, menu);
-      if (md.serverAlert) alertMap.set(md.label, (alertMap.get(md.label) ?? 0) + mod.qty * qty);
+      if (modifierLabel(mod, menu).serverAlert) {
+        alertMap.set(mod.name, (alertMap.get(mod.name) ?? 0) + mod.qty * qty);
+      }
     }
   }
   if (alertMap.size > 0) {
-    const alerts: string[] = ['----', '{align:left}', '"!! CONFIRM:" |'];
-    for (const [label, count] of alertMap) {
-      alerts.push(`"${count} ${esc(label)}" |`);
+    const alerts: string[] = ['----', '{align:left}'];
+    for (const [name, count] of alertMap) {
+      alerts.push(`"${count} ${esc(name)}" |`);
     }
     after.push(seg(SECTION_CPL.alerts, alerts));
   }
