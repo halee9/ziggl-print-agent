@@ -125,6 +125,25 @@ type data\logs\service-out.log
 5. **급한 주문은 POS 프린터 아이콘** — 에이전트가 죽어 있으면 자동으로 브라우저 인쇄로 폴백됨
 6. 영업 중 급하면 에이전트를 끄고(POS Settings에서 Auto Print ON) 기존 방식으로 롤백
 
+## 아이템 레이블 (Rollo USB) — 선택 기능
+
+POS의 "Print Items" 버튼(아이템×수량마다 스티커 1장)을 Rollo로 보낼 수 있다.
+**설정 전까지는 기존 브라우저 인쇄(Epson) 그대로 동작** — opt-in 방식.
+
+1. Rollo를 에이전트 PC에 USB 연결, 드라이버 설치 (https://www.rollo.com/driver-dl/)
+2. Windows 프린터 설정에서 Rollo의 정확한 프린터 이름 확인 (예: "Rollo Printer")
+   + 프린터 기본 설정에서 용지 크기를 2"×1"로
+3. config.json에 추가:
+   ```jsonc
+   "labelPrinterName": "Rollo Printer",   // 빈 값 = 레이블 기능 꺼짐 (브라우저 인쇄 유지)
+   "labelWidthIn": 2,
+   "labelHeightIn": 1,
+   "labelDpi": 203
+   ```
+4. `npm run test-label` — 샘플 레이블 실물 출력 확인 (`-- --preview-only` 는 data/label-*.png만 생성)
+5. 서비스 재시작 → 이후 POS "Print Items" 클릭이 Rollo로 출력됨.
+   에이전트가 꺼져 있으면 자동으로 브라우저 인쇄 폴백.
+
 ## 여러 대 운영 (집 테스트 등)
 
 - 에이전트는 어디서 실행하든 서버에 붙어 자동 인쇄를 수행함 — 여러 대면 각자 자기 프린터로 인쇄 (관찰·백업용으로 유용).

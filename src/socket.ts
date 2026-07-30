@@ -4,6 +4,7 @@ import type { Api } from './api';
 import type { StateStore } from './state';
 import type { PrintQueue } from './queue';
 import type { KDSOrder, MenuDisplayConfig } from './types';
+import { printOrderLabels } from './labelPrinter';
 import { log } from './log';
 
 const ORDER_CACHE_MAX = 300;
@@ -52,6 +53,22 @@ export class SocketBridge {
     this.menu = await this.api.fetchMenuDisplay();
   }
 
+  /** 레이블 인쇄 — 티켓 큐와 별개로 즉시 처리 (수동 액션이라 재시도 큐 없음, 실패는 로그) */
+  private async printLabels(orderId: string) {
+    try {
+      const cached = this.orderCache.get(orderId);
+      const order = cached ?? (await this.api.fetchOrder(orderId))?.order;
+      if (!order) {
+        log.warn(`print:labels — cannot resolve order ${orderId}`);
+        return;
+      }
+      const count = await printOrderLabels(order, this.config);
+      log.info(`printed ${count} label(s) for #${order.displayId}`);
+    } catch (err: any) {
+      log.error(`print:labels failed for ${orderId}: ${err.message}`);
+    }
+  }
+
   private cacheOrder(order: KDSOrder) {
     this.orderCache.set(order.id, order);
     if (this.orderCache.size > ORDER_CACHE_MAX) {
@@ -71,6 +88,10 @@ export class SocketBridge {
       if (this.config.acceptManualPrints) {
         this.socket.emit('join-printer', this.config.restaurantCode);
       }
+      // 레이블 프린터(Rollo)가 설정된 에이전트만 labeler room에 join
+      if (this.config.labelPrinterName) {
+        this.socket.emit('join-labeler', this.config.restaurantCode);
+      }
       void this.catchUp();
     });
 
@@ -79,6 +100,13 @@ export class SocketBridge {
       if (!payload?.orderId) return;
       log.info(`print:request received for ${payload.orderId}`);
       this.queue.enqueue(payload.orderId, 'manual', { force: true });
+    });
+
+    // POS "Print Items" → 아이템 레이블(Rollo) 인쇄
+    this.socket.on('print:labels', (payload: { orderId?: string }) => {
+      if (!payload?.orderId || !this.config.labelPrinterName) return;
+      log.info(`print:labels received for ${payload.orderId}`);
+      void this.printLabels(payload.orderId);
     });
 
     this.socket.on('disconnect', (reason) => {

@@ -16,6 +16,12 @@ export interface AgentConfig {
   /** POS 수동 재출력(프린터 아이콘) 수신 여부. 매장 본기기만 true —
    *  집/테스트 에이전트는 false로 두어야 매장 재출력을 가로채지 않음 */
   acceptManualPrints: boolean;
+  /** 아이템 레이블 프린터의 Windows 프린터 이름 (예: "Rollo Printer").
+   *  빈 값이면 레이블 기능 비활성 — labeler room에 join하지 않아 POS가 브라우저 인쇄로 폴백 */
+  labelPrinterName: string;
+  labelWidthIn: number;   // 레이블 폭 (인치)
+  labelHeightIn: number;  // 레이블 높이 (인치)
+  labelDpi: number;       // Rollo = 203
   enabled: boolean;
   timezoneFallback: string;
   maxTicketAgeMinutes: number;
@@ -30,6 +36,10 @@ const DEFAULTS = {
   threshold: 200,
   fontFamily: '',
   acceptManualPrints: true,
+  labelPrinterName: '',
+  labelWidthIn: 2,
+  labelHeightIn: 1,
+  labelDpi: 203,
   enabled: true,
   timezoneFallback: 'America/Los_Angeles',
   maxTicketAgeMinutes: 30,
@@ -58,6 +68,10 @@ export function loadConfig(): AgentConfig {
     threshold: raw.threshold ?? DEFAULTS.threshold,
     fontFamily: raw.fontFamily ?? DEFAULTS.fontFamily,
     acceptManualPrints: raw.acceptManualPrints ?? DEFAULTS.acceptManualPrints,
+    labelPrinterName: raw.labelPrinterName ?? DEFAULTS.labelPrinterName,
+    labelWidthIn: raw.labelWidthIn ?? DEFAULTS.labelWidthIn,
+    labelHeightIn: raw.labelHeightIn ?? DEFAULTS.labelHeightIn,
+    labelDpi: raw.labelDpi ?? DEFAULTS.labelDpi,
     enabled: raw.enabled ?? DEFAULTS.enabled,
     timezoneFallback: raw.timezoneFallback ?? DEFAULTS.timezoneFallback,
     maxTicketAgeMinutes: raw.maxTicketAgeMinutes ?? DEFAULTS.maxTicketAgeMinutes,
