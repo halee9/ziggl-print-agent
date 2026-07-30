@@ -136,7 +136,7 @@ export class PrintQueue {
           menu: this.deps.getMenu(),
           printSource: job.source,
         });
-        const buffer = await renderStarGraphic(doc, this.deps.config.cpl);
+        const buffer = await renderStarGraphic(doc, this.deps.config.cpl, this.deps.config.threshold);
         await sendToPrinter(buffer, this.deps.config.printerIp, this.deps.config.printerPort);
         log.info(`printed #${order.displayId} (${job.source}) in ${Date.now() - started}ms`);
         return { kind: 'printed' };

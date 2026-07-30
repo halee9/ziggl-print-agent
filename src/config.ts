@@ -6,7 +6,10 @@ export interface AgentConfig {
   restaurantCode: string;
   printerIp: string;
   printerPort: number;
+  /** 글자 밀도(줄당 글자수). 용지 폭(48)보다 작을수록 글자가 커짐. 권장 32-42 */
   cpl: number;
+  /** 이진화 임계값(100-255). 높을수록 연한 획까지 검정으로 — 흐리면 올릴 것 */
+  threshold: number;
   enabled: boolean;
   timezoneFallback: string;
   maxTicketAgeMinutes: number;
@@ -17,7 +20,8 @@ export interface AgentConfig {
 
 const DEFAULTS = {
   printerPort: 9100,
-  cpl: 48,
+  cpl: 36,
+  threshold: 200,
   enabled: true,
   timezoneFallback: 'America/Los_Angeles',
   maxTicketAgeMinutes: 30,
@@ -43,6 +47,7 @@ export function loadConfig(): AgentConfig {
     printerIp: raw.printerIp,
     printerPort: raw.printerPort ?? DEFAULTS.printerPort,
     cpl: raw.cpl ?? DEFAULTS.cpl,
+    threshold: raw.threshold ?? DEFAULTS.threshold,
     enabled: raw.enabled ?? DEFAULTS.enabled,
     timezoneFallback: raw.timezoneFallback ?? DEFAULTS.timezoneFallback,
     maxTicketAgeMinutes: raw.maxTicketAgeMinutes ?? DEFAULTS.maxTicketAgeMinutes,
@@ -53,8 +58,11 @@ export function loadConfig(): AgentConfig {
   if (!Number.isInteger(config.printerPort) || config.printerPort < 1 || config.printerPort > 65535) {
     throw new Error('config.json: printerPort must be 1-65535');
   }
-  if (!Number.isInteger(config.cpl) || config.cpl < 24 || config.cpl > 96) {
-    throw new Error('config.json: cpl must be 24-96 (48 for 80mm)');
+  if (!Number.isInteger(config.cpl) || config.cpl < 24 || config.cpl > 48) {
+    throw new Error('config.json: cpl must be 24-48 (smaller = bigger text, 36 recommended)');
+  }
+  if (!Number.isInteger(config.threshold) || config.threshold < 100 || config.threshold > 255) {
+    throw new Error('config.json: threshold must be 100-255');
   }
   return config;
 }

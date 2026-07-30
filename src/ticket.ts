@@ -75,8 +75,9 @@ export function buildTicketDoc(order: KDSOrder, opts: TicketOptions): string {
   lines.push(`{code:${opts.serverUrl}/receipt/${order.id}; option:qrcode,4,l}`);
   lines.push('----');
 
-  // ── Line items ──
+  // ── Line items ── (이름 컬럼 최대 확보, 가격 컬럼 고정 7자 — 이름 중간 꺾임 방지)
   lines.push('{align:left}');
+  lines.push('{width:* 7}');
   for (const item of order.lineItems) {
     const qtyPrefix = item.quantity !== '1' ? `${esc(item.quantity)} ` : '';
     lines.push(`"${qtyPrefix}${esc(item.name)}" | "${formatMoney(item.totalMoney)}"`);
@@ -93,11 +94,13 @@ export function buildTicketDoc(order: KDSOrder, opts: TicketOptions): string {
       lines.push(` '${esc(item.note)}' |`);
     }
   }
+  lines.push('{width:auto}');
   lines.push('{align:center}');
   lines.push('----');
 
   // ── Totals ──
   lines.push('{align:left}');
+  lines.push('{width:* 7}');
   if (order.subtotal != null) lines.push(`Subtotal | ${formatMoney(order.subtotal)}`);
   const tax = order.tax ?? order.taxAmount;
   if (tax != null) lines.push(`Tax | ${formatMoney(tax)}`);
@@ -106,6 +109,7 @@ export function buildTicketDoc(order: KDSOrder, opts: TicketOptions): string {
     lines.push(`Points Discount | \\-${formatMoney(order.loyaltyDiscount)}`);
   }
   if (order.tipAmount != null && order.tipAmount > 0) lines.push(`Tip | ${formatMoney(order.tipAmount)}`);
+  lines.push('{width:auto}'); // 확대(^) Total은 자동 폭이 필요
   lines.push(`^Total | ^${formatMoney(order.totalMoney)}`);
   lines.push('{align:center}');
 

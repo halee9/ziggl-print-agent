@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { buildTicketDoc } from '../ticket';
-import { renderSvg } from '../render';
+import { renderSvg, renderTicketPng } from '../render';
 import type { KDSOrder } from '../types';
 
 async function main() {
@@ -20,11 +20,13 @@ async function main() {
   });
 
   console.log('── receiptline doc ──\n' + doc + '\n──────────────────────');
-  const svg = await renderSvg(doc, 48);
-  const out = path.join(__dirname, '../../data/ticket.svg');
-  fs.mkdirSync(path.dirname(out), { recursive: true });
-  fs.writeFileSync(out, svg);
-  console.log(`wrote ${out}`);
+  const cpl = parseInt(process.env.PREVIEW_CPL ?? '36', 10);
+  const outDir = path.join(__dirname, '../../data');
+  fs.mkdirSync(outDir, { recursive: true });
+  fs.writeFileSync(path.join(outDir, 'ticket.svg'), await renderSvg(doc, cpl));
+  // 실제 인쇄와 동일한 파이프라인의 PNG (threshold 이진화 포함)
+  fs.writeFileSync(path.join(outDir, 'ticket.png'), await renderTicketPng(doc, cpl, 200));
+  console.log(`wrote ${outDir}/ticket.svg and ticket.png (cpl=${cpl})`);
 }
 
 main().catch((err) => {
