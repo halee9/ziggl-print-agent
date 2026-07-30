@@ -6,6 +6,7 @@
   "cpl": 32,
   "threshold": 200,
   "fontFamily": "Consolas",
+  "acceptManualPrints": true,
   "enabled": true,
   "timezoneFallback": "America/Los_Angeles",
   "maxTicketAgeMinutes": 30,

@@ -65,8 +65,12 @@ export class SocketBridge {
     this.socket.on('connect', () => {
       log.info(`socket connected (${this.socket.id}) — joining ${this.config.restaurantCode}`);
       this.socket.emit('join', this.config.restaurantCode);
-      // 프린터 전용 room — 서버의 수동 재출력 릴레이가 에이전트 온라인 판단에 사용
-      this.socket.emit('join-printer', this.config.restaurantCode);
+      // 프린터 전용 room — 서버의 수동 재출력 릴레이가 에이전트 온라인 판단에 사용.
+      // 테스트/관찰용 에이전트(acceptManualPrints=false)는 join하지 않음 —
+      // room에 있으면 매장 POS의 재출력을 가로채고 폴백도 막아버림
+      if (this.config.acceptManualPrints) {
+        this.socket.emit('join-printer', this.config.restaurantCode);
+      }
       void this.catchUp();
     });
 

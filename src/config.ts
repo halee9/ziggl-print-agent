@@ -13,6 +13,9 @@ export interface AgentConfig {
   /** 티켓 폰트 (머신에 설치된 폰트명, 예: "Consolas"). 빈 값 = receiptline 기본(Courier 계열).
    *  컬럼 정렬이 monospace 기준이라 고정폭 폰트 권장 */
   fontFamily: string;
+  /** POS 수동 재출력(프린터 아이콘) 수신 여부. 매장 본기기만 true —
+   *  집/테스트 에이전트는 false로 두어야 매장 재출력을 가로채지 않음 */
+  acceptManualPrints: boolean;
   enabled: boolean;
   timezoneFallback: string;
   maxTicketAgeMinutes: number;
@@ -26,6 +29,7 @@ const DEFAULTS = {
   cpl: 30,
   threshold: 200,
   fontFamily: '',
+  acceptManualPrints: true,
   enabled: true,
   timezoneFallback: 'America/Los_Angeles',
   maxTicketAgeMinutes: 30,
@@ -53,6 +57,7 @@ export function loadConfig(): AgentConfig {
     cpl: raw.cpl ?? DEFAULTS.cpl,
     threshold: raw.threshold ?? DEFAULTS.threshold,
     fontFamily: raw.fontFamily ?? DEFAULTS.fontFamily,
+    acceptManualPrints: raw.acceptManualPrints ?? DEFAULTS.acceptManualPrints,
     enabled: raw.enabled ?? DEFAULTS.enabled,
     timezoneFallback: raw.timezoneFallback ?? DEFAULTS.timezoneFallback,
     maxTicketAgeMinutes: raw.maxTicketAgeMinutes ?? DEFAULTS.maxTicketAgeMinutes,
