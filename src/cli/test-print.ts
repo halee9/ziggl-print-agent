@@ -1,7 +1,7 @@
 // npm run test-print [-- --ip 192.168.1.50 --port 9100] — 픽스처 티켓을 실물 프린터로 출력
 import fs from 'node:fs';
 import path from 'node:path';
-import { buildTicketParts } from '../ticket';
+import { buildTicketLayout } from '../ticket';
 import { renderStarGraphic } from '../render';
 import { sendToPrinter } from '../printer';
 import type { KDSOrder } from '../types';
@@ -37,7 +37,7 @@ async function main() {
     fs.readFileSync(path.join(__dirname, '../../fixtures/sample-order.json'), 'utf-8')
   );
 
-  const parts = buildTicketParts(order, {
+  const layout = buildTicketLayout(order, {
     timezone: 'America/Los_Angeles',
     serverUrl: 'https://api.ziggl.app',
     menu: {
@@ -45,10 +45,10 @@ async function main() {
       modifiers: [{ modifier_name: 'Extra Spicy Sauce', abbreviation: 'Ex Spicy', server_alert: true }],
     },
     printSource: 'test',
-  });
+  }, cpl);
 
   console.log(`rendering ticket (cpl=${cpl}, threshold=${threshold}, font=${fontFamily || 'default'})...`);
-  const buffer = await renderStarGraphic(parts, cpl, threshold, fontFamily || undefined);
+  const buffer = await renderStarGraphic(layout, threshold, fontFamily || undefined);
   console.log(`sending ${buffer.length} bytes to ${ip}:${port}...`);
   await sendToPrinter(buffer, ip, port);
   console.log('OK — check the printer. QR should open the receipt page (test order → 404 is expected).');

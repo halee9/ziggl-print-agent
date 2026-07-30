@@ -50,30 +50,59 @@ export interface TicketOptions {
   now?: Date;
 }
 
-/** 좌우 합성 렌더링을 위한 티켓 분할 — header / 주문번호 패널 / QR 패널 / body */
-export interface TicketParts {
-  header: string;
+/** 섹션별 마크업 + 글자 밀도(cpl). cpl이 작을수록 크게 인쇄됨 */
+export interface TicketSegment {
+  doc: string;
+  cpl: number;
+}
+
+/** 좌우 합성 렌더링을 위한 티켓 레이아웃 — 번호/QR 행 위·아래의 세로 세그먼트들 */
+export interface TicketLayout {
+  before: TicketSegment[];
   numberPanel: string;
   qrPanel: string;
-  body: string;
+  after: TicketSegment[];
 }
 
 /**
- * OrderTicketModal.tsx TicketContent 포팅.
- * 주문번호+QR은 원본처럼 좌우 배치 — receiptline 마크업으론 불가해서
- * 패널별 마크업을 반환하고 render.ts가 PNG 합성.
+ * 원본 브라우저 티켓(280px, Firefox → 80mm 확대 인쇄)의 요소별 px 크기를
+ * 576도트 기준 cpl로 환산한 값. 기준(base=30)이 바뀌면 전체가 비례 스케일.
+ *   16px(주문타입·Total) → cpl 29~30 / 14px(아이템·NOTE) → 33 /
+ *   12px(시각·결제) → 38 / 18px(알림 항목) → 26 / 10px(푸터) → 46
  */
-export function buildTicketParts(order: KDSOrder, opts: TicketOptions): TicketParts {
-  // ── Header ──
-  const header: string[] = [];
+const SECTION_CPL = {
+  base: 30,   // 주문 타입 + ^^이름(=text-3xl 상당)
+  times: 38,  // Order at / Pickup at
+  items: 33,  // 라인아이템·모디파이어·합계 행·NOTE
+  total: 29,  // Total 행 (원본 text-base bold)
+  small: 38,  // 결제 수단
+  alerts: 26, // !! CONFIRM 항목 (원본 text-lg font-black)
+  footer: 46, // printed-at
+};
+
+/**
+ * OrderTicketModal.tsx TicketContent 포팅 — 섹션별 밀도로 원본 크기 재현.
+ * baseCpl(기본 30)을 바꾸면 모든 섹션이 비례해서 커지고 작아짐.
+ */
+export function buildTicketLayout(order: KDSOrder, opts: TicketOptions, baseCpl = 30): TicketLayout {
+  const scale = (cpl: number) => Math.max(20, Math.round((cpl * baseCpl) / 30));
+  const seg = (cpl: number, lines: string[]): TicketSegment => ({ doc: lines.join('\n'), cpl: scale(cpl) });
+  const menu = opts.menu;
+  const before: TicketSegment[] = [];
+  const after: TicketSegment[] = [];
+
+  // ── Header: 주문 타입 + 이름(대형 볼드) ──
   const orderType = `${order.source} ${order.isDelivery ? 'Delivery' : 'Pickup'}`;
-  header.push(`|${esc(orderType)}|`);
-  header.push(`|^^"${esc(order.displayName || '-')}"|`);
-  header.push(`|Order at ${esc(formatDateTime(order.createdAt, opts.timezone))}|`);
-  if (order.pickupAt) {
-    header.push(`|Pickup at ${esc(formatDateTime(order.pickupAt, opts.timezone))}|`);
-  }
-  header.push('----');
+  before.push(seg(SECTION_CPL.base, [
+    `|${esc(orderType)}|`,
+    `|^^"${esc(order.displayName || '-')}"|`,
+  ]));
+
+  // ── 주문/픽업 시각 (원본 text-xs) ──
+  const times = [`|Order at ${esc(formatDateTime(order.createdAt, opts.timezone))}|`];
+  if (order.pickupAt) times.push(`|Pickup at ${esc(formatDateTime(order.pickupAt, opts.timezone))}|`);
+  times.push('----');
+  before.push(seg(SECTION_CPL.times, times));
 
   // ── 좌: 주문번호(대형) + 봉투 수 ── (패널 폭 12자 기준 — 4배 확대 시 3자리까지)
   const idScale = order.displayId.length > 3 ? '^^^' : '^^^^';
@@ -86,69 +115,55 @@ export function buildTicketParts(order: KDSOrder, opts: TicketOptions): TicketPa
   // ── 우: QR ──
   const qrPanel = `{code:${opts.serverUrl}/receipt/${order.id}; option:qrcode,4,l}`;
 
-  const body = buildBody(order, opts);
-  return { header: header.join('\n'), numberPanel, qrPanel, body };
-}
-
-/** 프리뷰·테스트용 — 패널을 순서대로 이어붙인 단일 문서 */
-export function buildTicketDoc(order: KDSOrder, opts: TicketOptions): string {
-  const p = buildTicketParts(order, opts);
-  return [p.header, p.numberPanel, p.qrPanel, p.body].join('\n');
-}
-
-function buildBody(order: KDSOrder, opts: TicketOptions): string {
-  const lines: string[] = [];
-  const menu = opts.menu;
-  lines.push('----');
-
-  // ── Line items ── (이름 컬럼 최대 확보, 가격 컬럼 고정 7자 — 이름 중간 꺾임 방지)
-  lines.push('{align:left}');
-  lines.push('{width:* 7}');
+  // ── Line items (원본 text-sm bold 이름 + text-xs 상세) ──
+  const items: string[] = ['----', '{align:left}', '{width:* 7}'];
   for (const item of order.lineItems) {
     const qtyPrefix = item.quantity !== '1' ? `${esc(item.quantity)} ` : '';
-    lines.push(`"${qtyPrefix}${esc(item.name)}" | "${formatMoney(item.totalMoney)}"`);
+    items.push(`"${qtyPrefix}${esc(item.name)}" | "${formatMoney(item.totalMoney)}"`);
     if (item.variationName) {
-      lines.push(` ${esc(item.variationName)} |`);
+      items.push(` ${esc(item.variationName)} |`);
     }
     for (const raw of item.modifiers ?? []) {
       const mod = normalizeMod(raw);
       const modQty = mod.qty > 1 ? `${mod.qty}x ` : '';
       const modPrice = mod.price > 0 ? formatMoney(mod.price * mod.qty) : '';
-      lines.push(` ${modQty}${esc(mod.name)} | ${modPrice}`);
+      items.push(` ${modQty}${esc(mod.name)} | ${modPrice}`);
     }
     if (item.note) {
-      lines.push(` '${esc(item.note)}' |`);
+      items.push(` '${esc(item.note)}' |`);
     }
   }
-  lines.push('{width:auto}');
-  lines.push('{align:center}');
-  lines.push('----');
+  items.push('{width:auto}', '{align:center}', '----');
+  after.push(seg(SECTION_CPL.items, items));
 
-  // ── Totals ──
-  lines.push('{align:left}');
-  lines.push('{width:* 7}');
-  if (order.subtotal != null) lines.push(`Subtotal | ${formatMoney(order.subtotal)}`);
+  // ── Totals 행들 (Total 제외) ──
+  const totals: string[] = ['{align:left}', '{width:* 7}'];
+  if (order.subtotal != null) totals.push(`Subtotal | ${formatMoney(order.subtotal)}`);
   const tax = order.tax ?? order.taxAmount;
-  if (tax != null) lines.push(`Tax | ${formatMoney(tax)}`);
-  if (order.bagFee != null && order.bagFee > 0) lines.push(`Bag Fee | ${formatMoney(order.bagFee)}`);
+  if (tax != null) totals.push(`Tax | ${formatMoney(tax)}`);
+  if (order.bagFee != null && order.bagFee > 0) totals.push(`Bag Fee | ${formatMoney(order.bagFee)}`);
   if (order.loyaltyDiscount != null && order.loyaltyDiscount > 0) {
-    lines.push(`Points Discount | \\-${formatMoney(order.loyaltyDiscount)}`);
+    totals.push(`Points Discount | \\-${formatMoney(order.loyaltyDiscount)}`);
   }
-  if (order.tipAmount != null && order.tipAmount > 0) lines.push(`Tip | ${formatMoney(order.tipAmount)}`);
-  lines.push('{width:auto}'); // 확대(^) Total은 자동 폭이 필요
-  lines.push(`^Total | ^${formatMoney(order.totalMoney)}`);
-  lines.push('{align:center}');
+  if (order.tipAmount != null && order.tipAmount > 0) totals.push(`Tip | ${formatMoney(order.tipAmount)}`);
+  if (totals.length > 2) after.push(seg(SECTION_CPL.items, totals));
 
-  // ── Payment ──
+  // ── Total (원본은 살짝만 큰 bold — 2배 확대 아님) ──
+  after.push(seg(SECTION_CPL.total, [
+    '{align:left}', '{width:* 7}',
+    `"Total" | "${formatMoney(order.totalMoney)}"`,
+  ]));
+
+  // ── Payment (원본 text-xs) ──
   if (order.cardBrand || order.cardLast4 || order.paymentMethod) {
     const payment = order.paymentMethod === 'CASH'
       ? 'Cash'
       : [order.cardBrand, order.cardLast4 ? `**** ${order.cardLast4}` : ''].filter(Boolean).join(' ');
-    if (payment) lines.push(`|${esc(payment)}|`);
+    if (payment) after.push(seg(SECTION_CPL.small, [`|${esc(payment)}|`]));
   }
   // customerPhone: 인쇄 제외 (브라우저 티켓의 print:hidden과 동일)
 
-  // ── Server alerts (⚠ CONFIRM — 약어 사용) ──
+  // ── Server alerts (⚠ CONFIRM — 약어 사용, 원본 text-lg font-black) ──
   const alertMap = new Map<string, number>();
   for (const item of order.lineItems) {
     const qty = parseInt(item.quantity, 10) || 1;
@@ -161,35 +176,38 @@ function buildBody(order: KDSOrder, opts: TicketOptions): string {
     }
   }
   if (alertMap.size > 0) {
-    lines.push('----');
-    lines.push('{align:left}');
-    lines.push('"!! CONFIRM:" |');
+    const alerts: string[] = ['----', '{align:left}', '"!! CONFIRM:" |'];
     for (const [label, count] of alertMap) {
-      lines.push(`^${count} ${esc(label)} |`);
+      alerts.push(`"${count} ${esc(label)}" |`);
     }
-    lines.push('{align:center}');
+    after.push(seg(SECTION_CPL.alerts, alerts));
   }
 
-  // ── Note / Delivery Note ──
+  // ── Note / Delivery Note (원본 text-sm bold) ──
   if (order.note) {
-    lines.push('----');
-    lines.push('{align:left}');
-    lines.push(`"NOTE: ${esc(order.note)}" |`);
-    lines.push('{align:center}');
+    after.push(seg(SECTION_CPL.items, ['----', '{align:left}', `"NOTE: ${esc(order.note)}" |`]));
   }
   if (order.deliveryNote) {
-    lines.push('----');
-    lines.push('{align:left}');
-    lines.push(`"DELIVERY: ${esc(order.deliveryNote)}" |`);
-    lines.push('{align:center}');
+    after.push(seg(SECTION_CPL.items, ['----', '{align:left}', `"DELIVERY: ${esc(order.deliveryNote)}" |`]));
   }
 
-  // ── Print provenance footer ──
+  // ── Print provenance footer (원본 10px) ──
   const now = opts.now ?? new Date();
   const printedAt = now.toLocaleTimeString('en-US', {
     timeZone: opts.timezone, hour: 'numeric', minute: '2-digit', hour12: true,
   });
-  lines.push(`|Printed at ${esc(printedAt)} \\- ${opts.printSource}|`);
+  after.push(seg(SECTION_CPL.footer, [`|Printed at ${esc(printedAt)} \\- ${opts.printSource}|`]));
 
-  return lines.join('\n');
+  return { before, numberPanel, qrPanel, after };
+}
+
+/** 프리뷰·테스트용 — 세그먼트를 순서대로 이어붙인 단일 문서 */
+export function buildTicketDoc(order: KDSOrder, opts: TicketOptions): string {
+  const layout = buildTicketLayout(order, opts);
+  return [
+    ...layout.before.map((s) => s.doc),
+    layout.numberPanel,
+    layout.qrPanel,
+    ...layout.after.map((s) => s.doc),
+  ].join('\n');
 }

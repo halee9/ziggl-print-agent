@@ -1,30 +1,28 @@
 import { transform } from 'receiptline';
 import sharp from 'sharp';
-import type { TicketParts } from './ticket';
+import type { TicketLayout } from './ticket';
 
 /** 80mm 용지 = 576도트 = 48chars × 12px — 용지 폭은 고정 */
 const PRINTER_DOTS = 576;
 const PRINTER_CPL = 48;
-/** 주문번호/QR 패널의 마크업 폭(글자수) — 4배 확대 숫자 3자리가 딱 맞는 크기 */
-const PANEL_CPL = 12;
+/** 주문번호 패널의 마크업 폭(글자수) — 4배 확대 숫자 3자리가 딱 맞는 크기 */
+const NUMBER_PANEL_CPL = 12;
+/** QR 패널 — cell 4 QR(~132px)이 원본(≈210도트)과 비슷해지는 밀도 */
+const QR_PANEL_CPL = 15;
 /** 좌(번호)/우(QR) 패널의 출력 폭 */
 const LEFT_W = 288;
 const RIGHT_W = 288;
 
 /**
  * TSP100은 래스터 전용이라 receiptline stargraphic은 텍스트를 직접 못 그림.
- * 파이프라인: 마크업 → SVG → (벡터 확대) PNG → 패널 합성 → {image:} → stargraphic.
+ * 파이프라인: 섹션별 마크업 → SVG → (벡터 확대) PNG → 세로/좌우 합성 → {image:} → stargraphic.
  *
  * 인쇄 품질 핵심:
- * - cpl(글자 밀도)을 용지 폭(48)보다 작게 잡고 SVG를 벡터 단계(density)에서
- *   576도트로 확대 렌더 → 글자가 커지고 획이 두꺼워짐 (cpl 30 ≈ 원본 티켓 크기)
+ * - 섹션마다 다른 cpl로 렌더해 원본 브라우저 티켓의 요소별 폰트 크기를 재현
+ *   (receiptline은 문서 내 정수배 확대만 가능하므로 밀도를 바꿔 소수배를 얻음)
  * - threshold 이진화 + stargraphic gradient:false — 디더링으로 흐려지는 것 방지
  * - 주문번호(좌)와 QR(우)은 별도 패널로 렌더 후 좌우 합성 (원본 레이아웃)
  */
-export async function renderSvg(doc: string, cpl: number): Promise<string> {
-  return transform(doc, { command: 'svg', cpl, spacing: true });
-}
-
 async function panelPng(doc: string, cpl: number, targetWidth: number, threshold: number, fontFamily?: string): Promise<Buffer> {
   let svg = transform(doc, { command: 'svg', cpl, spacing: true });
   if (fontFamily) {
@@ -47,35 +45,49 @@ async function heightOf(png: Buffer): Promise<number> {
   return (await sharp(png).metadata()).height ?? 0;
 }
 
-export async function renderTicketPng(parts: TicketParts, cpl: number, threshold = 200, fontFamily?: string): Promise<Buffer> {
-  const [header, left, right, body] = await Promise.all([
-    panelPng(parts.header, cpl, PRINTER_DOTS, threshold, fontFamily),
-    panelPng(parts.numberPanel, PANEL_CPL, LEFT_W, threshold, fontFamily),
-    panelPng(parts.qrPanel, PANEL_CPL, RIGHT_W, threshold, fontFamily),
-    panelPng(parts.body, cpl, PRINTER_DOTS, threshold, fontFamily),
-  ]);
+interface Placed {
+  input: Buffer;
+  left: number;
+  top: number;
+}
 
-  const [headerH, leftH, rightH, bodyH] = await Promise.all([
-    heightOf(header), heightOf(left), heightOf(right), heightOf(body),
+export async function renderTicketPng(layout: TicketLayout, threshold = 200, fontFamily?: string): Promise<Buffer> {
+  const placed: Placed[] = [];
+  let y = 0;
+
+  for (const seg of layout.before) {
+    const png = await panelPng(seg.doc, seg.cpl, PRINTER_DOTS, threshold, fontFamily);
+    placed.push({ input: png, left: 0, top: y });
+    y += await heightOf(png);
+  }
+
+  // 주문번호(좌) + QR(우) 행
+  const [left, right] = await Promise.all([
+    panelPng(layout.numberPanel, NUMBER_PANEL_CPL, LEFT_W, threshold, fontFamily),
+    panelPng(layout.qrPanel, QR_PANEL_CPL, RIGHT_W, threshold, fontFamily),
   ]);
+  const [leftH, rightH] = await Promise.all([heightOf(left), heightOf(right)]);
   const rowH = Math.max(leftH, rightH);
-  const totalH = headerH + rowH + bodyH;
+  placed.push({ input: left, left: 0, top: y + Math.floor((rowH - leftH) / 2) });
+  placed.push({ input: right, left: LEFT_W, top: y + Math.floor((rowH - rightH) / 2) });
+  y += rowH;
+
+  for (const seg of layout.after) {
+    const png = await panelPng(seg.doc, seg.cpl, PRINTER_DOTS, threshold, fontFamily);
+    placed.push({ input: png, left: 0, top: y });
+    y += await heightOf(png);
+  }
 
   return sharp({
-    create: { width: PRINTER_DOTS, height: totalH, channels: 3, background: '#ffffff' },
+    create: { width: PRINTER_DOTS, height: y, channels: 3, background: '#ffffff' },
   })
-    .composite([
-      { input: header, left: 0, top: 0 },
-      { input: left, left: 0, top: headerH + Math.floor((rowH - leftH) / 2) },
-      { input: right, left: LEFT_W, top: headerH + Math.floor((rowH - rightH) / 2) },
-      { input: body, left: 0, top: headerH + rowH },
-    ])
+    .composite(placed)
     .png()
     .toBuffer();
 }
 
-export async function renderStarGraphic(parts: TicketParts, cpl: number, threshold = 200, fontFamily?: string): Promise<Buffer> {
-  const png = await renderTicketPng(parts, cpl, threshold, fontFamily);
+export async function renderStarGraphic(layout: TicketLayout, threshold = 200, fontFamily?: string): Promise<Buffer> {
+  const png = await renderTicketPng(layout, threshold, fontFamily);
   const imageDoc = `{image:${png.toString('base64')}}`;
   const bin = transform(imageDoc, {
     command: 'stargraphic',

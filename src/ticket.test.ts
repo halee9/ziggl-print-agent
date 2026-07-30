@@ -73,7 +73,7 @@ describe('buildTicketDoc', () => {
     expect(doc).toContain('Bag Fee | $0.20');
     expect(doc).toContain('Points Discount | \\-$3.00');
     expect(doc).toContain('Tip | $5.00');
-    expect(doc).toContain('^Total | ^$65.81');
+    expect(doc).toContain('"Total" | "$65.81"'); // 별도 세그먼트(큰 밀도)에서 bold로 렌더
   });
 
   it('renders card payment; cash renders as Cash', () => {
@@ -85,8 +85,8 @@ describe('buildTicketDoc', () => {
 
   it('aggregates server alerts with abbreviations: modifier qty × item qty', () => {
     expect(doc).toContain('"!! CONFIRM:" |');
-    expect(doc).toContain('^4 Ex Spicy |'); // 2(mod qty) × 2(item qty)
-    expect(doc).toContain('^1 GS Combo |');
+    expect(doc).toContain('"4 Ex Spicy" |'); // 2(mod qty) × 2(item qty)
+    expect(doc).toContain('"1 GS Combo" |');
   });
 
   it('omits CONFIRM block when no alerts configured', () => {
