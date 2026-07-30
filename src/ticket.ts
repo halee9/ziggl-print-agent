@@ -115,26 +115,35 @@ export function buildTicketLayout(order: KDSOrder, opts: TicketOptions, baseCpl 
   // ── 우: QR ──
   const qrPanel = `{code:${opts.serverUrl}/receipt/${order.id}; option:qrcode,4,l}`;
 
-  // ── Line items (원본 text-sm bold 이름 + text-xs 상세) ──
-  const items: string[] = ['----', '{align:left}', '{width:* 7}'];
+  // ── Line items ──
+  // 아이템명(원본 text-sm bold)과 옵션 상세(원본 text-xs)는 크기가 달라
+  // 세그먼트를 분리: 상세는 times 밀도 + 2칸 들여쓰기(폭 2짜리 빈 첫 컬럼).
+  after.push(seg(SECTION_CPL.items, ['----']));
   for (const item of order.lineItems) {
     const qtyPrefix = item.quantity !== '1' ? `${esc(item.quantity)} ` : '';
-    items.push(`"${qtyPrefix}${esc(item.name)}" | "${formatMoney(item.totalMoney)}"`);
+    after.push(seg(SECTION_CPL.items, [
+      '{align:left}', '{width:* 7}',
+      `"${qtyPrefix}${esc(item.name)}" | "${formatMoney(item.totalMoney)}"`,
+    ]));
+
+    const details: string[] = [];
     if (item.variationName) {
-      items.push(` ${esc(item.variationName)} |`);
+      details.push(`\\  |${esc(item.variationName)} |`);
     }
     for (const raw of item.modifiers ?? []) {
       const mod = normalizeMod(raw);
       const modQty = mod.qty > 1 ? `${mod.qty}x ` : '';
       const modPrice = mod.price > 0 ? formatMoney(mod.price * mod.qty) : '';
-      items.push(` ${modQty}${esc(mod.name)} | ${modPrice}`);
+      details.push(`\\  |${modQty}${esc(mod.name)} | ${modPrice}`);
     }
     if (item.note) {
-      items.push(` '${esc(item.note)}' |`);
+      details.push(`\\  |'${esc(item.note)}' |`);
+    }
+    if (details.length > 0) {
+      after.push(seg(SECTION_CPL.times, ['{align:left}', '{width:2 * 7}', ...details]));
     }
   }
-  items.push('{width:auto}', '{align:center}', '----');
-  after.push(seg(SECTION_CPL.items, items));
+  after.push(seg(SECTION_CPL.items, ['----']));
 
   // ── Totals 행들 (Total 제외) ──
   const totals: string[] = ['{align:left}', '{width:* 7}'];
