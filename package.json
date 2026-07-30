@@ -1,0 +1,31 @@
+{
+  "name": "ziggl-print-agent",
+  "version": "1.0.0",
+  "description": "Kitchen ticket print agent — Star TSP100 LAN (raster) via receiptline",
+  "private": true,
+  "main": "dist/index.js",
+  "type": "commonjs",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test-print": "tsx src/cli/test-print.ts",
+    "preview": "tsx src/cli/preview.ts"
+  },
+  "dependencies": {
+    "receiptline": "^4.0.3",
+    "sharp": "^0.35.3",
+    "socket.io-client": "^4.8.3"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.2",
+    "tsx": "^4.23.1",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.10"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

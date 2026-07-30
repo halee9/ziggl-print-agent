@@ -1,0 +1,48 @@
+{
+  "id": "TEST-ORDER-0001",
+  "displayId": "42",
+  "source": "Kiosk",
+  "status": "IN_PROGRESS",
+  "isDelivery": false,
+  "displayName": "Jason",
+  "pickupAt": "",
+  "lineItems": [
+    {
+      "name": "Chicken Teriyaki",
+      "quantity": "2",
+      "variationName": "Large",
+      "totalMoney": 3398,
+      "modifiers": [
+        { "name": "Brown Rice", "qty": 1, "price": 100 },
+        { "name": "Extra Spicy Sauce", "qty": 2, "price": 75 }
+      ],
+      "note": "no onions | extra {sauce} please"
+    },
+    {
+      "name": "Garlic Spicy Combo",
+      "quantity": "1",
+      "totalMoney": 2108,
+      "modifiers": ["Miso Soup"]
+    },
+    {
+      "name": "Coke",
+      "quantity": "1",
+      "totalMoney": 250
+    }
+  ],
+  "subtotal": 5756,
+  "tax": 605,
+  "taxAmount": 605,
+  "tipAmount": 500,
+  "bagCount": 2,
+  "bagFee": 20,
+  "loyaltyDiscount": 300,
+  "totalMoney": 6581,
+  "paymentMethod": "CARD",
+  "cardBrand": "VISA",
+  "cardLast4": "8820",
+  "note": "customer will arrive at 6:30",
+  "deliveryNote": "",
+  "createdAt": "2026-07-29T18:05:00.000Z",
+  "updatedAt": "2026-07-29T18:06:00.000Z"
+}
