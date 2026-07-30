@@ -26,6 +26,17 @@ describe('esc', () => {
   });
 });
 
+describe('formatDisplayName', () => {
+  it('keeps first name, initials the last name', async () => {
+    const { formatDisplayName } = await import('./ticket');
+    expect(formatDisplayName('William Chong')).toBe('William C.');
+    expect(formatDisplayName('Mary Jane Watson')).toBe('Mary Jane W.');
+    expect(formatDisplayName('Jason')).toBe('Jason');
+    expect(formatDisplayName('  ')).toBe('-');
+    expect(formatDisplayName('kim lee')).toBe('kim L.');
+  });
+});
+
 describe('normalizeMod', () => {
   it('string → {name, qty:1, price:0}', () => {
     expect(normalizeMod('Miso Soup')).toEqual({ name: 'Miso Soup', qty: 1, price: 0 });

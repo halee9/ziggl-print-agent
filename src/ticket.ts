@@ -24,6 +24,15 @@ export function normalizeMod(mod: any): OrderModifier {
   };
 }
 
+/** "William Chong" → "William C." — first name 전체 + last name 이니셜 */
+export function formatDisplayName(name: string): string {
+  const tokens = (name ?? '').trim().split(/\s+/).filter(Boolean);
+  if (tokens.length === 0) return '-';
+  if (tokens.length === 1) return tokens[0];
+  const last = tokens[tokens.length - 1];
+  return `${tokens.slice(0, -1).join(' ')} ${last[0].toUpperCase()}.`;
+}
+
 function itemLabel(name: string, menu: MenuDisplayConfig): { label: string; serverAlert: boolean } {
   const config = menu.menuItems.find((m) => m.item_name.toLowerCase().trim() === name.toLowerCase().trim());
   return { label: config?.abbreviation || name, serverAlert: config?.server_alert ?? false };
@@ -98,7 +107,7 @@ export function buildTicketLayout(order: KDSOrder, opts: TicketOptions, baseCpl 
   before.push(seg(SECTION_CPL.base, [
     `|${esc(orderType)}|`,
     // ^^^ = 가로세로 2배 — ^^는 세로만 2배(반폭)라 이름이 좁아 보임
-    `|^^^"${esc(order.displayName || '-')}"|`,
+    `|^^^"${esc(formatDisplayName(order.displayName))}"|`,
   ]));
 
   // ── 주문/픽업 시각 (원본 text-xs) ──
