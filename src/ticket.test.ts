@@ -41,7 +41,7 @@ describe('buildTicketDoc', () => {
 
   it('renders header: source+pickup, name, order time', () => {
     expect(lines[0]).toBe('|Kiosk Pickup|');
-    expect(lines[1]).toBe('|^^Jason|');
+    expect(lines[1]).toBe('|^^"Jason"|');
     expect(doc).toContain('|Order at 7/29/2026, 11:05 AM|');
   });
 
@@ -52,7 +52,7 @@ describe('buildTicketDoc', () => {
   });
 
   it('renders displayId at max scale, bag count, and QR', () => {
-    expect(doc).toContain('|^^^^42|');
+    expect(doc).toContain('|^^^^"42"|');
     expect(doc).toContain('|2 Bags|');
     expect(doc).toContain('{code:https://api.ziggl.app/receipt/TEST-ORDER-0001; option:qrcode,4,l}');
   });

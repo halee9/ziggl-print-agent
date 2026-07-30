@@ -20,7 +20,7 @@ export interface AgentConfig {
 
 const DEFAULTS = {
   printerPort: 9100,
-  cpl: 36,
+  cpl: 30,
   threshold: 200,
   enabled: true,
   timezoneFallback: 'America/Los_Angeles',

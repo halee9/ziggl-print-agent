@@ -50,29 +50,55 @@ export interface TicketOptions {
   now?: Date;
 }
 
+/** 좌우 합성 렌더링을 위한 티켓 분할 — header / 주문번호 패널 / QR 패널 / body */
+export interface TicketParts {
+  header: string;
+  numberPanel: string;
+  qrPanel: string;
+  body: string;
+}
+
 /**
  * OrderTicketModal.tsx TicketContent 포팅.
- * 반환값은 receiptline 마크업 문서 (기본 정렬 center, 좌측 정렬은 {align:left}).
+ * 주문번호+QR은 원본처럼 좌우 배치 — receiptline 마크업으론 불가해서
+ * 패널별 마크업을 반환하고 render.ts가 PNG 합성.
  */
+export function buildTicketParts(order: KDSOrder, opts: TicketOptions): TicketParts {
+  // ── Header ──
+  const header: string[] = [];
+  const orderType = `${order.source} ${order.isDelivery ? 'Delivery' : 'Pickup'}`;
+  header.push(`|${esc(orderType)}|`);
+  header.push(`|^^"${esc(order.displayName || '-')}"|`);
+  header.push(`|Order at ${esc(formatDateTime(order.createdAt, opts.timezone))}|`);
+  if (order.pickupAt) {
+    header.push(`|Pickup at ${esc(formatDateTime(order.pickupAt, opts.timezone))}|`);
+  }
+  header.push('----');
+
+  // ── 좌: 주문번호(대형) + 봉투 수 ── (패널 폭 12자 기준 — 4배 확대 시 3자리까지)
+  const idScale = order.displayId.length > 3 ? '^^^' : '^^^^';
+  const bagCount = order.bagCount ?? 0;
+  const numberPanel = [
+    `|${idScale}"${esc(order.displayId)}"|`,
+    `|${bagCount > 0 ? `${bagCount} Bag${bagCount > 1 ? 's' : ''}` : 'No Bags'}|`,
+  ].join('\n');
+
+  // ── 우: QR ──
+  const qrPanel = `{code:${opts.serverUrl}/receipt/${order.id}; option:qrcode,4,l}`;
+
+  const body = buildBody(order, opts);
+  return { header: header.join('\n'), numberPanel, qrPanel, body };
+}
+
+/** 프리뷰·테스트용 — 패널을 순서대로 이어붙인 단일 문서 */
 export function buildTicketDoc(order: KDSOrder, opts: TicketOptions): string {
+  const p = buildTicketParts(order, opts);
+  return [p.header, p.numberPanel, p.qrPanel, p.body].join('\n');
+}
+
+function buildBody(order: KDSOrder, opts: TicketOptions): string {
   const lines: string[] = [];
   const menu = opts.menu;
-
-  // ── Header ──
-  const orderType = `${order.source} ${order.isDelivery ? 'Delivery' : 'Pickup'}`;
-  lines.push(`|${esc(orderType)}|`);
-  lines.push(`|^^${esc(order.displayName || '-')}|`);
-  lines.push(`|Order at ${esc(formatDateTime(order.createdAt, opts.timezone))}|`);
-  if (order.pickupAt) {
-    lines.push(`|Pickup at ${esc(formatDateTime(order.pickupAt, opts.timezone))}|`);
-  }
-  lines.push('----');
-
-  // ── Order number + bags + QR (세로 배치 — 브라우저 티켓은 좌우 배치였음) ──
-  lines.push(`|^^^^${esc(order.displayId)}|`);
-  const bagCount = order.bagCount ?? 0;
-  lines.push(`|${bagCount > 0 ? `${bagCount} Bag${bagCount > 1 ? 's' : ''}` : 'No Bags'}|`);
-  lines.push(`{code:${opts.serverUrl}/receipt/${order.id}; option:qrcode,4,l}`);
   lines.push('----');
 
   // ── Line items ── (이름 컬럼 최대 확보, 가격 컬럼 고정 7자 — 이름 중간 꺾임 방지)

@@ -1,7 +1,7 @@
 // npm run test-print [-- --ip 192.168.1.50 --port 9100] — 픽스처 티켓을 실물 프린터로 출력
 import fs from 'node:fs';
 import path from 'node:path';
-import { buildTicketDoc } from '../ticket';
+import { buildTicketParts } from '../ticket';
 import { renderStarGraphic } from '../render';
 import { sendToPrinter } from '../printer';
 import type { KDSOrder } from '../types';
@@ -14,7 +14,7 @@ function arg(name: string): string | undefined {
 async function main() {
   let ip = arg('ip');
   let port = parseInt(arg('port') ?? '9100', 10);
-  let cpl = parseInt(arg('cpl') ?? '36', 10);
+  let cpl = parseInt(arg('cpl') ?? '30', 10);
   let threshold = parseInt(arg('threshold') ?? '200', 10);
 
   // config.json 있으면 기본값으로 사용
@@ -23,7 +23,7 @@ async function main() {
     const c = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
     ip = ip || c.printerIp;
     port = arg('port') ? port : (c.printerPort ?? 9100);
-    cpl = arg('cpl') ? cpl : (c.cpl ?? 36);
+    cpl = arg('cpl') ? cpl : (c.cpl ?? 30);
     threshold = arg('threshold') ? threshold : (c.threshold ?? 200);
   }
   if (!ip) {
@@ -35,7 +35,7 @@ async function main() {
     fs.readFileSync(path.join(__dirname, '../../fixtures/sample-order.json'), 'utf-8')
   );
 
-  const doc = buildTicketDoc(order, {
+  const parts = buildTicketParts(order, {
     timezone: 'America/Los_Angeles',
     serverUrl: 'https://api.ziggl.app',
     menu: {
@@ -46,7 +46,7 @@ async function main() {
   });
 
   console.log(`rendering ticket (cpl=${cpl}, threshold=${threshold})...`);
-  const buffer = await renderStarGraphic(doc, cpl, threshold);
+  const buffer = await renderStarGraphic(parts, cpl, threshold);
   console.log(`sending ${buffer.length} bytes to ${ip}:${port}...`);
   await sendToPrinter(buffer, ip, port);
   console.log('OK — check the printer. QR should open the receipt page (test order → 404 is expected).');

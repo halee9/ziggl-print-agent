@@ -3,7 +3,7 @@
   "restaurantCode": "midori",
   "printerIp": "192.168.1.50",
   "printerPort": 9100,
-  "cpl": 48,
+  "cpl": 30,
   "enabled": true,
   "timezoneFallback": "America/Los_Angeles",
   "maxTicketAgeMinutes": 30,

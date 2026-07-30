@@ -2,7 +2,7 @@ import type { AgentConfig } from './config';
 import type { Api } from './api';
 import type { StateStore } from './state';
 import type { KDSOrder, MenuDisplayConfig, PersistedJob, PrintSource } from './types';
-import { buildTicketDoc } from './ticket';
+import { buildTicketParts } from './ticket';
 import { renderStarGraphic } from './render';
 import { sendToPrinter } from './printer';
 import { log } from './log';
@@ -130,13 +130,13 @@ export class PrintQueue {
     for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
       try {
         const started = Date.now();
-        const doc = buildTicketDoc(order, {
+        const parts = buildTicketParts(order, {
           timezone: this.deps.getTimezone(),
           serverUrl: this.deps.config.serverUrl,
           menu: this.deps.getMenu(),
           printSource: job.source,
         });
-        const buffer = await renderStarGraphic(doc, this.deps.config.cpl, this.deps.config.threshold);
+        const buffer = await renderStarGraphic(parts, this.deps.config.cpl, this.deps.config.threshold);
         await sendToPrinter(buffer, this.deps.config.printerIp, this.deps.config.printerPort);
         log.info(`printed #${order.displayId} (${job.source}) in ${Date.now() - started}ms`);
         return { kind: 'printed' };
