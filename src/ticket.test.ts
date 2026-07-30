@@ -41,7 +41,7 @@ describe('buildTicketDoc', () => {
 
   it('renders header: source+pickup, name, order time', () => {
     expect(lines[0]).toBe('|Kiosk Pickup|');
-    expect(lines[1]).toBe('|^^"Jason"|');
+    expect(lines[1]).toBe('|^^^"Jason"|'); // ^^^ = 가로세로 2배 (^^는 반폭)
     expect(doc).toContain('|Order at 7/29/2026, 11:05 AM|');
   });
 
@@ -51,8 +51,8 @@ describe('buildTicketDoc', () => {
     expect(withPickup).toContain('|Pickup at 7/29/2026, 6:30 PM|');
   });
 
-  it('renders displayId at max scale, bag count, and QR', () => {
-    expect(doc).toContain('|^^^^"42"|');
+  it('renders zero-padded displayId at max scale, bag count, and QR', () => {
+    expect(doc).toContain('|^^^^^"042"|'); // 3자리 zero padding + 4배 확대
     expect(doc).toContain('|2 Bags|');
     expect(doc).toContain('{code:https://api.ziggl.app/receipt/TEST-ORDER-0001; option:qrcode,4,l}');
   });

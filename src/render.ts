@@ -7,6 +7,8 @@ const PRINTER_DOTS = 576;
 const PRINTER_CPL = 48;
 /** 주문번호 패널의 마크업 폭(글자수) — 4배 확대 숫자 3자리가 딱 맞는 크기 */
 const NUMBER_PANEL_CPL = 12;
+/** 봉투 수 패널 — 번호보다 한 단계 작게 (아이템 텍스트와 비슷한 크기) */
+const BAGS_PANEL_CPL = 16;
 /** QR 패널 — cell 4 QR(~132px)이 원본(≈210도트)과 비슷해지는 밀도 */
 const QR_PANEL_CPL = 15;
 /** 좌(번호)/우(QR) 패널의 출력 폭 */
@@ -61,14 +63,18 @@ export async function renderTicketPng(layout: TicketLayout, threshold = 200, fon
     y += await heightOf(png);
   }
 
-  // 주문번호(좌) + QR(우) 행
-  const [left, right] = await Promise.all([
+  // 주문번호+봉투수(좌) + QR(우) 행 — 봉투수는 번호보다 작은 밀도로 아래에 쌓음
+  const [numberPng, bagsPng, right] = await Promise.all([
     panelPng(layout.numberPanel, NUMBER_PANEL_CPL, LEFT_W, threshold, fontFamily),
+    panelPng(layout.bagsPanel, BAGS_PANEL_CPL, LEFT_W, threshold, fontFamily),
     panelPng(layout.qrPanel, QR_PANEL_CPL, RIGHT_W, threshold, fontFamily),
   ]);
-  const [leftH, rightH] = await Promise.all([heightOf(left), heightOf(right)]);
+  const [numberH, bagsH, rightH] = await Promise.all([heightOf(numberPng), heightOf(bagsPng), heightOf(right)]);
+  const leftH = numberH + bagsH;
   const rowH = Math.max(leftH, rightH);
-  placed.push({ input: left, left: 0, top: y + Math.floor((rowH - leftH) / 2) });
+  const leftTop = y + Math.floor((rowH - leftH) / 2);
+  placed.push({ input: numberPng, left: 0, top: leftTop });
+  placed.push({ input: bagsPng, left: 0, top: leftTop + numberH });
   placed.push({ input: right, left: LEFT_W, top: y + Math.floor((rowH - rightH) / 2) });
   y += rowH;
 

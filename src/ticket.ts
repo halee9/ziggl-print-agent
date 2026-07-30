@@ -60,6 +60,8 @@ export interface TicketSegment {
 export interface TicketLayout {
   before: TicketSegment[];
   numberPanel: string;
+  /** 번호 아래 봉투 수 — 번호보다 작은 밀도로 별도 렌더 */
+  bagsPanel: string;
   qrPanel: string;
   after: TicketSegment[];
 }
@@ -95,7 +97,8 @@ export function buildTicketLayout(order: KDSOrder, opts: TicketOptions, baseCpl 
   const orderType = `${order.source} ${order.isDelivery ? 'Delivery' : 'Pickup'}`;
   before.push(seg(SECTION_CPL.base, [
     `|${esc(orderType)}|`,
-    `|^^"${esc(order.displayName || '-')}"|`,
+    // ^^^ = 가로세로 2배 — ^^는 세로만 2배(반폭)라 이름이 좁아 보임
+    `|^^^"${esc(order.displayName || '-')}"|`,
   ]));
 
   // ── 주문/픽업 시각 (원본 text-xs) ──
@@ -104,13 +107,15 @@ export function buildTicketLayout(order: KDSOrder, opts: TicketOptions, baseCpl 
   times.push('----');
   before.push(seg(SECTION_CPL.times, times));
 
-  // ── 좌: 주문번호(대형) + 봉투 수 ── (패널 폭 12자 기준 — 4배 확대 시 3자리까지)
-  const idScale = order.displayId.length > 3 ? '^^^' : '^^^^';
+  // ── 좌: 주문번호(3자리 zero padding, 대형) ──
+  // 패널 폭 12자: ^^^^^(4배)면 3자리, ^^^^(3배)면 4자리까지 들어감
+  const displayId = order.displayId.padStart(3, '0');
+  const idScale = displayId.length <= 3 ? '^^^^^' : displayId.length === 4 ? '^^^^' : '^^^';
+  const numberPanel = `|${idScale}"${esc(displayId)}"|`;
+
+  // ── 번호 아래 봉투 수 (번호 패널보다 작은 밀도로 별도 렌더) ──
   const bagCount = order.bagCount ?? 0;
-  const numberPanel = [
-    `|${idScale}"${esc(order.displayId)}"|`,
-    `|${bagCount > 0 ? `${bagCount} Bag${bagCount > 1 ? 's' : ''}` : 'No Bags'}|`,
-  ].join('\n');
+  const bagsPanel = `|${bagCount > 0 ? `${bagCount} Bag${bagCount > 1 ? 's' : ''}` : 'No Bags'}|`;
 
   // ── 우: QR ──
   const qrPanel = `{code:${opts.serverUrl}/receipt/${order.id}; option:qrcode,4,l}`;
@@ -207,7 +212,7 @@ export function buildTicketLayout(order: KDSOrder, opts: TicketOptions, baseCpl 
   });
   after.push(seg(SECTION_CPL.footer, [`|Printed at ${esc(printedAt)} \\- ${opts.printSource}|`]));
 
-  return { before, numberPanel, qrPanel, after };
+  return { before, numberPanel, bagsPanel, qrPanel, after };
 }
 
 /** 프리뷰·테스트용 — 세그먼트를 순서대로 이어붙인 단일 문서 */
@@ -216,6 +221,7 @@ export function buildTicketDoc(order: KDSOrder, opts: TicketOptions): string {
   return [
     ...layout.before.map((s) => s.doc),
     layout.numberPanel,
+    layout.bagsPanel,
     layout.qrPanel,
     ...layout.after.map((s) => s.doc),
   ].join('\n');
