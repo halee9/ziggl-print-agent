@@ -10,6 +10,9 @@ export interface AgentConfig {
   cpl: number;
   /** 이진화 임계값(100-255). 높을수록 연한 획까지 검정으로 — 흐리면 올릴 것 */
   threshold: number;
+  /** 티켓 폰트 (머신에 설치된 폰트명, 예: "Consolas"). 빈 값 = receiptline 기본(Courier 계열).
+   *  컬럼 정렬이 monospace 기준이라 고정폭 폰트 권장 */
+  fontFamily: string;
   enabled: boolean;
   timezoneFallback: string;
   maxTicketAgeMinutes: number;
@@ -22,6 +25,7 @@ const DEFAULTS = {
   printerPort: 9100,
   cpl: 30,
   threshold: 200,
+  fontFamily: '',
   enabled: true,
   timezoneFallback: 'America/Los_Angeles',
   maxTicketAgeMinutes: 30,
@@ -48,6 +52,7 @@ export function loadConfig(): AgentConfig {
     printerPort: raw.printerPort ?? DEFAULTS.printerPort,
     cpl: raw.cpl ?? DEFAULTS.cpl,
     threshold: raw.threshold ?? DEFAULTS.threshold,
+    fontFamily: raw.fontFamily ?? DEFAULTS.fontFamily,
     enabled: raw.enabled ?? DEFAULTS.enabled,
     timezoneFallback: raw.timezoneFallback ?? DEFAULTS.timezoneFallback,
     maxTicketAgeMinutes: raw.maxTicketAgeMinutes ?? DEFAULTS.maxTicketAgeMinutes,

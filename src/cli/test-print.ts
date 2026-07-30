@@ -16,6 +16,7 @@ async function main() {
   let port = parseInt(arg('port') ?? '9100', 10);
   let cpl = parseInt(arg('cpl') ?? '30', 10);
   let threshold = parseInt(arg('threshold') ?? '200', 10);
+  let fontFamily = arg('font') ?? '';
 
   // config.json 있으면 기본값으로 사용
   const configPath = path.join(process.cwd(), 'config.json');
@@ -25,6 +26,7 @@ async function main() {
     port = arg('port') ? port : (c.printerPort ?? 9100);
     cpl = arg('cpl') ? cpl : (c.cpl ?? 30);
     threshold = arg('threshold') ? threshold : (c.threshold ?? 200);
+    fontFamily = arg('font') ? fontFamily : (c.fontFamily ?? '');
   }
   if (!ip) {
     console.error('Usage: npm run test-print -- --ip <printer-ip> [--port 9100] [--cpl 36] [--threshold 200]');
@@ -45,8 +47,8 @@ async function main() {
     printSource: 'test',
   });
 
-  console.log(`rendering ticket (cpl=${cpl}, threshold=${threshold})...`);
-  const buffer = await renderStarGraphic(parts, cpl, threshold);
+  console.log(`rendering ticket (cpl=${cpl}, threshold=${threshold}, font=${fontFamily || 'default'})...`);
+  const buffer = await renderStarGraphic(parts, cpl, threshold, fontFamily || undefined);
   console.log(`sending ${buffer.length} bytes to ${ip}:${port}...`);
   await sendToPrinter(buffer, ip, port);
   console.log('OK — check the printer. QR should open the receipt page (test order → 404 is expected).');

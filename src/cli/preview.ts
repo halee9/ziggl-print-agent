@@ -24,8 +24,9 @@ async function main() {
   const outDir = path.join(__dirname, '../../data');
   fs.mkdirSync(outDir, { recursive: true });
   // 실제 인쇄와 동일한 파이프라인의 PNG (패널 합성 + threshold 이진화 포함)
-  fs.writeFileSync(path.join(outDir, 'ticket.png'), await renderTicketPng(buildTicketParts(order, opts), cpl, 200));
-  console.log(`wrote ${outDir}/ticket.png (cpl=${cpl})`);
+  const fontFamily = process.env.PREVIEW_FONT || undefined;
+  fs.writeFileSync(path.join(outDir, 'ticket.png'), await renderTicketPng(buildTicketParts(order, opts), cpl, 200, fontFamily));
+  console.log(`wrote ${outDir}/ticket.png (cpl=${cpl}, font=${fontFamily ?? 'default'})`);
 }
 
 main().catch((err) => {

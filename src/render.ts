@@ -25,8 +25,15 @@ export async function renderSvg(doc: string, cpl: number): Promise<string> {
   return transform(doc, { command: 'svg', cpl, spacing: true });
 }
 
-async function panelPng(doc: string, cpl: number, targetWidth: number, threshold: number): Promise<Buffer> {
-  const svg = transform(doc, { command: 'svg', cpl, spacing: true });
+async function panelPng(doc: string, cpl: number, targetWidth: number, threshold: number, fontFamily?: string): Promise<Buffer> {
+  let svg = transform(doc, { command: 'svg', cpl, spacing: true });
+  if (fontFamily) {
+    // 전역 <g font-family="..."> 하나만 교체 — 지정 폰트 없을 때를 대비해 기본 스택을 폴백으로 유지
+    svg = svg.replace(
+      /font-family="[^"]*"/,
+      `font-family="'${fontFamily.replace(/['"\\]/g, '')}', 'Courier Prime', 'Courier New', monospace"`
+    );
+  }
   const density = (72 * targetWidth) / (cpl * 12);
   return sharp(Buffer.from(svg), { density })
     .resize({ width: targetWidth })
@@ -40,12 +47,12 @@ async function heightOf(png: Buffer): Promise<number> {
   return (await sharp(png).metadata()).height ?? 0;
 }
 
-export async function renderTicketPng(parts: TicketParts, cpl: number, threshold = 200): Promise<Buffer> {
+export async function renderTicketPng(parts: TicketParts, cpl: number, threshold = 200, fontFamily?: string): Promise<Buffer> {
   const [header, left, right, body] = await Promise.all([
-    panelPng(parts.header, cpl, PRINTER_DOTS, threshold),
-    panelPng(parts.numberPanel, PANEL_CPL, LEFT_W, threshold),
-    panelPng(parts.qrPanel, PANEL_CPL, RIGHT_W, threshold),
-    panelPng(parts.body, cpl, PRINTER_DOTS, threshold),
+    panelPng(parts.header, cpl, PRINTER_DOTS, threshold, fontFamily),
+    panelPng(parts.numberPanel, PANEL_CPL, LEFT_W, threshold, fontFamily),
+    panelPng(parts.qrPanel, PANEL_CPL, RIGHT_W, threshold, fontFamily),
+    panelPng(parts.body, cpl, PRINTER_DOTS, threshold, fontFamily),
   ]);
 
   const [headerH, leftH, rightH, bodyH] = await Promise.all([
@@ -67,8 +74,8 @@ export async function renderTicketPng(parts: TicketParts, cpl: number, threshold
     .toBuffer();
 }
 
-export async function renderStarGraphic(parts: TicketParts, cpl: number, threshold = 200): Promise<Buffer> {
-  const png = await renderTicketPng(parts, cpl, threshold);
+export async function renderStarGraphic(parts: TicketParts, cpl: number, threshold = 200, fontFamily?: string): Promise<Buffer> {
+  const png = await renderTicketPng(parts, cpl, threshold, fontFamily);
   const imageDoc = `{image:${png.toString('base64')}}`;
   const bin = transform(imageDoc, {
     command: 'stargraphic',
