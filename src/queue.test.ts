@@ -74,6 +74,15 @@ describe('PrintQueue', () => {
     queue.stop();
   });
 
+  it('force enqueue (manual reprint) bypasses printed dedup', async () => {
+    const { queue, state } = makeQueue();
+    state.markPrinted('o1', 'auto');
+    queue.enqueue('o1', 'manual', { force: true });
+    await flush();
+    expect(mockedSend).toHaveBeenCalledTimes(1);
+    queue.stop();
+  });
+
   it('skips CANCELED orders and marks them', async () => {
     const { queue, state } = makeQueue({
       resolveCached: vi.fn().mockReturnValue({ ...ORDER, status: 'CANCELED' }),

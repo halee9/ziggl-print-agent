@@ -51,8 +51,9 @@ export class PrintQueue {
     return this.jobs.length;
   }
 
-  enqueue(orderId: string, source: PrintSource) {
-    if (this.deps.state.isPrinted(orderId)) {
+  enqueue(orderId: string, source: PrintSource, opts?: { force?: boolean }) {
+    // 수동 재출력(force)은 이미 인쇄한 주문도 다시 뽑아야 하므로 dedup 우회
+    if (!opts?.force && this.deps.state.isPrinted(orderId)) {
       log.debug(`skip enqueue ${orderId}: already printed`);
       return;
     }

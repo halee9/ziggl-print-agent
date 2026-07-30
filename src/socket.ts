@@ -65,7 +65,16 @@ export class SocketBridge {
     this.socket.on('connect', () => {
       log.info(`socket connected (${this.socket.id}) — joining ${this.config.restaurantCode}`);
       this.socket.emit('join', this.config.restaurantCode);
+      // 프린터 전용 room — 서버의 수동 재출력 릴레이가 에이전트 온라인 판단에 사용
+      this.socket.emit('join-printer', this.config.restaurantCode);
       void this.catchUp();
+    });
+
+    // POS 프린터 아이콘 → 서버 릴레이 → 수동 재출력 (이미 인쇄한 주문도 다시 인쇄)
+    this.socket.on('print:request', (payload: { orderId?: string }) => {
+      if (!payload?.orderId) return;
+      log.info(`print:request received for ${payload.orderId}`);
+      this.queue.enqueue(payload.orderId, 'manual', { force: true });
     });
 
     this.socket.on('disconnect', (reason) => {
