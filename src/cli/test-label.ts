@@ -8,9 +8,13 @@ import type { KDSOrder } from '../types';
 
 async function main() {
   const previewOnly = process.argv.includes('--preview-only');
+  const countArg = process.argv.indexOf('--count');
+  const maxLabels = countArg >= 0 ? parseInt(process.argv[countArg + 1], 10) || 2 : 2;
   const order: KDSOrder = JSON.parse(
     fs.readFileSync(path.join(__dirname, '../../fixtures/sample-order.json'), 'utf-8')
   );
+  // 스티커 절약 — 수량을 1로 줄이고 앞에서 maxLabels개 아이템만 사용 (기본 2장)
+  order.lineItems = order.lineItems.slice(0, maxLabels).map((li) => ({ ...li, quantity: '1' }));
 
   const configPath = path.join(process.cwd(), 'config.json');
   const c = fs.existsSync(configPath) ? JSON.parse(fs.readFileSync(configPath, 'utf-8')) : {};
