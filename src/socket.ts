@@ -62,7 +62,7 @@ export class SocketBridge {
         log.warn(`print:labels — cannot resolve order ${orderId}`);
         return;
       }
-      const count = await printOrderLabels(order, this.config);
+      const count = await printOrderLabels(order, this.config, this.menu);
       log.info(`printed ${count} label(s) for #${order.displayId}`);
     } catch (err: any) {
       log.error(`print:labels failed for ${orderId}: ${err.message}`);

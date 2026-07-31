@@ -4,7 +4,7 @@ import path from 'node:path';
 import { execFile } from 'node:child_process';
 import sharp from 'sharp';
 import type { AgentConfig } from './config';
-import type { KDSOrder } from './types';
+import type { KDSOrder, MenuDisplayConfig } from './types';
 import { buildLabelSvg, expandItems } from './label';
 import { buildTsplJob } from './tspl';
 import { log } from './log';
@@ -43,8 +43,13 @@ function sendRaw(printerName: string, jobFile: string): Promise<void> {
 }
 
 /** 주문의 모든 레이블(아이템×수량)을 단일 TSPL 잡으로 인쇄. 장수 반환 */
-export async function printOrderLabels(order: KDSOrder, config: AgentConfig): Promise<number> {
-  const items = expandItems(order.lineItems);
+export async function printOrderLabels(order: KDSOrder, config: AgentConfig, menu?: MenuDisplayConfig): Promise<number> {
+  // print_label=false인 아이템(소스류 등)은 레이블 제외 — POS 메뉴 관리(menu_display)에서 설정
+  const labelable = order.lineItems.filter((li) => {
+    const cfg = menu?.menuItems.find((m) => m.item_name.toLowerCase().trim() === li.name.toLowerCase().trim());
+    return cfg?.print_label !== false;
+  });
+  const items = expandItems(labelable);
   if (items.length === 0) return 0;
 
   const widthPx = Math.round(config.labelWidthIn * config.labelDpi);

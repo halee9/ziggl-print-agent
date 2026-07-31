@@ -46,6 +46,7 @@ export interface MenuDisplayItem {
   item_name: string;
   abbreviation?: string;
   server_alert?: boolean;
+  print_label?: boolean; // false면 아이템 레이블 인쇄 제외 (default: true)
 }
 
 export interface ModifierDisplayItem {
