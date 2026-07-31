@@ -26,6 +26,8 @@ export interface AgentConfig {
   labelWidthIn: number;   // 레이블 폭 (인치)
   labelHeightIn: number;  // 레이블 높이 (인치)
   labelDpi: number;       // Rollo = 203
+  labelGapMm: number;     // 라벨 사이 갭 (셀프테스트 GAP LEN 값)
+  labelDensity: number;   // TSPL 인쇄 농도 0-15
   enabled: boolean;
   timezoneFallback: string;
   maxTicketAgeMinutes: number;
@@ -45,6 +47,8 @@ const DEFAULTS = {
   labelWidthIn: 2,
   labelHeightIn: 1,
   labelDpi: 203,
+  labelGapMm: 2,
+  labelDensity: 8,
   enabled: true,
   timezoneFallback: 'America/Los_Angeles',
   maxTicketAgeMinutes: 30,
@@ -78,6 +82,8 @@ export function loadConfig(): AgentConfig {
     labelWidthIn: raw.labelWidthIn ?? DEFAULTS.labelWidthIn,
     labelHeightIn: raw.labelHeightIn ?? DEFAULTS.labelHeightIn,
     labelDpi: raw.labelDpi ?? DEFAULTS.labelDpi,
+    labelGapMm: raw.labelGapMm ?? DEFAULTS.labelGapMm,
+    labelDensity: raw.labelDensity ?? DEFAULTS.labelDensity,
     enabled: raw.enabled ?? DEFAULTS.enabled,
     timezoneFallback: raw.timezoneFallback ?? DEFAULTS.timezoneFallback,
     maxTicketAgeMinutes: raw.maxTicketAgeMinutes ?? DEFAULTS.maxTicketAgeMinutes,

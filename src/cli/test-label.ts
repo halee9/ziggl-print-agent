@@ -19,6 +19,8 @@ async function main() {
     labelWidthIn: c.labelWidthIn ?? 2,
     labelHeightIn: c.labelHeightIn ?? 1,
     labelDpi: c.labelDpi ?? 203,
+    labelGapMm: c.labelGapMm ?? 2,
+    labelDensity: c.labelDensity ?? 8,
     fontFamily: c.fontFamily ?? 'Consolas',
   };
 

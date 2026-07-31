@@ -16,15 +16,12 @@
     "preview": "tsx src/cli/preview.ts"
   },
   "dependencies": {
-    "pdf-to-printer": "^5.8.0",
-    "pdfkit": "^0.19.1",
     "receiptline": "^4.0.3",
     "sharp": "^0.35.3",
     "socket.io-client": "^4.8.3"
   },
   "devDependencies": {
     "@types/node": "^26.1.2",
-    "@types/pdfkit": "^0.17.6",
     "tsx": "^4.23.1",
     "typescript": "^7.0.2",
     "vitest": "^4.1.10"

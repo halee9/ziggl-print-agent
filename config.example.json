@@ -12,6 +12,8 @@
   "labelWidthIn": 2,
   "labelHeightIn": 1,
   "labelDpi": 203,
+  "labelGapMm": 2,
+  "labelDensity": 8,
   "enabled": true,
   "timezoneFallback": "America/Los_Angeles",
   "maxTicketAgeMinutes": 30,
