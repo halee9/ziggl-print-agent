@@ -88,8 +88,8 @@ export class SocketBridge {
       if (this.config.acceptManualPrints) {
         this.socket.emit('join-printer', this.config.restaurantCode);
       }
-      // 레이블 프린터(Rollo)가 설정된 에이전트만 labeler room에 join
-      if (this.config.labelPrinterName) {
+      // 레이블 프린터(Rollo)가 설정되고 수신 허용된 에이전트만 labeler room에 join
+      if (this.config.labelPrinterName && this.config.acceptLabelPrints) {
         this.socket.emit('join-labeler', this.config.restaurantCode);
       }
       void this.catchUp();

@@ -8,6 +8,7 @@
   "fontFamily": "Consolas",
   "acceptManualPrints": true,
   "labelPrinterName": "",
+  "acceptLabelPrints": true,
   "labelWidthIn": 2,
   "labelHeightIn": 1,
   "labelDpi": 203,

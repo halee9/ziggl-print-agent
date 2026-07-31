@@ -19,6 +19,10 @@ export interface AgentConfig {
   /** 아이템 레이블 프린터의 Windows 프린터 이름 (예: "Rollo Printer").
    *  빈 값이면 레이블 기능 비활성 — labeler room에 join하지 않아 POS가 브라우저 인쇄로 폴백 */
   labelPrinterName: string;
+  /** POS "Print Items" 릴레이 수신 여부. 매장 본기기만 true —
+   *  집에서 Rollo 테스트할 땐 false로 두어야 매장 레이블 출력을 가로채지 않음
+   *  (npm run test-label은 이 플래그와 무관하게 동작) */
+  acceptLabelPrints: boolean;
   labelWidthIn: number;   // 레이블 폭 (인치)
   labelHeightIn: number;  // 레이블 높이 (인치)
   labelDpi: number;       // Rollo = 203
@@ -37,6 +41,7 @@ const DEFAULTS = {
   fontFamily: '',
   acceptManualPrints: true,
   labelPrinterName: '',
+  acceptLabelPrints: true,
   labelWidthIn: 2,
   labelHeightIn: 1,
   labelDpi: 203,
@@ -69,6 +74,7 @@ export function loadConfig(): AgentConfig {
     fontFamily: raw.fontFamily ?? DEFAULTS.fontFamily,
     acceptManualPrints: raw.acceptManualPrints ?? DEFAULTS.acceptManualPrints,
     labelPrinterName: raw.labelPrinterName ?? DEFAULTS.labelPrinterName,
+    acceptLabelPrints: raw.acceptLabelPrints ?? DEFAULTS.acceptLabelPrints,
     labelWidthIn: raw.labelWidthIn ?? DEFAULTS.labelWidthIn,
     labelHeightIn: raw.labelHeightIn ?? DEFAULTS.labelHeightIn,
     labelDpi: raw.labelDpi ?? DEFAULTS.labelDpi,
