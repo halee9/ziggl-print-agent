@@ -8,12 +8,20 @@ export interface LabelItem {
   variationName?: string;
   modifiers: OrderModifier[];
   note?: string;
+  /** 원본 order.lineItems 배열에서의 인덱스 — 스캔 페이로드(zgi:)가 POS와 공유하는 좌표 */
+  lineIdx: number;
+  /** 같은 라인 내 몇 번째 단위인지 (qty=3 → 0,1,2) */
+  unitIdx: number;
 }
 
-/** qty=2 → 레이블 2장 (ItemLabelPrinter.expandItems 포팅) */
-export function expandItems(lineItems: KDSOrder['lineItems']): LabelItem[] {
+/** qty=2 → 레이블 2장 (ItemLabelPrinter.expandItems 포팅). shouldPrint로 제외해도 lineIdx는 원본 기준 유지 */
+export function expandItems(
+  lineItems: KDSOrder['lineItems'],
+  shouldPrint?: (item: KDSOrder['lineItems'][number]) => boolean,
+): LabelItem[] {
   const result: LabelItem[] = [];
-  for (const item of lineItems) {
+  for (const [lineIdx, item] of lineItems.entries()) {
+    if (shouldPrint && !shouldPrint(item)) continue;
     const qty = parseInt(item.quantity, 10) || 1;
     for (let i = 0; i < qty; i++) {
       result.push({
@@ -21,6 +29,8 @@ export function expandItems(lineItems: KDSOrder['lineItems']): LabelItem[] {
         variationName: item.variationName,
         modifiers: (item.modifiers ?? []).map(normalizeMod),
         note: item.note,
+        lineIdx,
+        unitIdx: i,
       });
     }
   }

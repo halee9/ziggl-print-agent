@@ -2,8 +2,8 @@
 // npm run test-label -- --preview-only  → 인쇄 없이 data/label-N.png만 생성
 import fs from 'node:fs';
 import path from 'node:path';
-import { buildLabelSvg, expandItems } from '../label';
-import { renderLabelPng, printOrderLabels } from '../labelPrinter';
+import { expandItems } from '../label';
+import { renderLabelWithQr, printOrderLabels } from '../labelPrinter';
 import type { KDSOrder } from '../types';
 
 async function main() {
@@ -35,8 +35,7 @@ async function main() {
   fs.mkdirSync(outDir, { recursive: true });
 
   for (const [i, item] of items.entries()) {
-    const svg = buildLabelSvg(item, order.displayId, { widthPx, heightPx, fontFamily: config.fontFamily });
-    const png = await renderLabelPng(svg, widthPx, heightPx);
+    const png = await renderLabelWithQr(item, order, { widthPx, heightPx, fontFamily: config.fontFamily });
     fs.writeFileSync(path.join(outDir, `label-${i + 1}.png`), png);
   }
   console.log(`rendered ${items.length} label(s) → data/label-*.png (${widthPx}x${heightPx}px)`);

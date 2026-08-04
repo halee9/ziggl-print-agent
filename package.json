@@ -16,12 +16,14 @@
     "preview": "tsx src/cli/preview.ts"
   },
   "dependencies": {
+    "qrcode": "^1.5.4",
     "receiptline": "^4.0.3",
     "sharp": "^0.35.3",
     "socket.io-client": "^4.8.3"
   },
   "devDependencies": {
     "@types/node": "^26.1.2",
+    "@types/qrcode": "^1.5.6",
     "tsx": "^4.23.1",
     "typescript": "^7.0.2",
     "vitest": "^4.1.10"
