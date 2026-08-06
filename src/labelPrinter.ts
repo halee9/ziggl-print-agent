@@ -14,8 +14,12 @@ import { log } from './log';
 // 텍스트 SVG는 축소될 수 있지만 QR은 최종 픽셀에 고정 크기로 합성 — 스캔 가능성 보장.
 // width 옵션(비정수 스케일)은 모듈 폭이 2~3px로 들쭉날쭉해져 실물 스캔 실패 —
 // 반드시 정수 scale로 생성 (4px/모듈 = 0.5mm @203dpi, 실측 검증됨).
-const QR_ZONE_PX = 118;   // 오른쪽 예약 폭
-const QR_SCALE = 4;       // px per module
+// 프린터 좌우 정렬 오차로 가장자리가 잘릴 수 있으므로(실물에서 확인됨) 라벨 우측에서
+// EDGE_MARGIN만큼 안쪽에 배치하고, QR 자체 quiet zone(margin 2 = 8px)도 확보.
+const QR_ZONE_PX = 130;      // 오른쪽 예약 폭 (텍스트 영역 = 406-130 = 276px)
+const QR_SCALE = 4;          // px per module
+const QR_QUIET_MODULES = 2;  // QR 내장 여백 (모듈 단위)
+const QR_EDGE_MARGIN = 12;   // 라벨 우측 끝에서 QR 이미지까지 추가 여백(px)
 /** 주문 ID 뒤 10자만 페이로드에 사용 — QR 버전을 낮춰 모듈을 크게 유지. POS는 suffix 매칭 */
 const QR_ID_SUFFIX_LEN = 10;
 
@@ -53,11 +57,11 @@ export async function renderLabelWithQr(
   });
   const textPng = await renderLabelPng(svg, widthPx - QR_ZONE_PX, heightPx);
   const payload = `zgi:${order.id.slice(-QR_ID_SUFFIX_LEN)}:${item.lineIdx}:${item.unitIdx}`;
-  let qrPng = await QRCode.toBuffer(payload, { errorCorrectionLevel: 'M', margin: 1, scale: QR_SCALE });
+  let qrPng = await QRCode.toBuffer(payload, { errorCorrectionLevel: 'M', margin: QR_QUIET_MODULES, scale: QR_SCALE });
   let qrSize = (await sharp(qrPng).metadata()).width!;
-  if (qrSize > QR_ZONE_PX || qrSize > heightPx) {
+  if (qrSize + QR_EDGE_MARGIN > QR_ZONE_PX || qrSize > heightPx) {
     // 안전장치: 페이로드가 길어져 QR 버전이 올라가면 한 단계 작은 스케일로
-    qrPng = await QRCode.toBuffer(payload, { errorCorrectionLevel: 'M', margin: 1, scale: QR_SCALE - 1 });
+    qrPng = await QRCode.toBuffer(payload, { errorCorrectionLevel: 'M', margin: QR_QUIET_MODULES, scale: QR_SCALE - 1 });
     qrSize = (await sharp(qrPng).metadata()).width!;
   }
   return sharp({
@@ -66,8 +70,9 @@ export async function renderLabelWithQr(
     .composite([
       { input: textPng, left: 0, top: 0 },
       {
+        // 우측 끝 기준 고정 여백 — 프린터가 오른쪽으로 밀려도 QR이 잘리지 않게
         input: qrPng,
-        left: widthPx - QR_ZONE_PX + Math.floor((QR_ZONE_PX - qrSize) / 2),
+        left: widthPx - qrSize - QR_EDGE_MARGIN,
         top: Math.floor((heightPx - qrSize) / 2),
       },
     ])
