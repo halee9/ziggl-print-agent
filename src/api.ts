@@ -54,6 +54,38 @@ export class Api {
     return res.json();
   }
 
+  private async send(method: string, path: string, body: any): Promise<number> {
+    const res = await fetch(`${this.config.serverUrl}${path}`, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(15_000),
+    });
+    return res.status;
+  }
+
+  /** 스캔으로 주문 상태 전환 (티켓 스캔 → READY/COMPLETED). 서버가 forward-only 검증. */
+  async advanceStatus(orderId: string, status: 'READY' | 'COMPLETED'): Promise<number> {
+    return this.send('PUT', `/api/orders/${orderId}/status`, {
+      status,
+      restaurantCode: this.config.restaurantCode,
+    });
+  }
+
+  /** 스캐너 사용 로그 (scan_events 영구 저장 + railway [SCAN] 로그) */
+  async logScan(station: string, kind: string, orderId: string): Promise<void> {
+    try {
+      await this.send('POST', '/api/orders/scan-log', {
+        restaurantCode: this.config.restaurantCode,
+        station,
+        kind,
+        orderId,
+      });
+    } catch {
+      /* 로깅 실패는 무시 */
+    }
+  }
+
   /** 오늘자 주문 스냅샷 (KDS camelCase shape) */
   async fetchActiveOrders(): Promise<KDSOrder[]> {
     const data = await this.get(`/api/orders/${this.config.restaurantCode}/active`);

@@ -4,6 +4,7 @@ import { StateStore } from './state';
 import { Api } from './api';
 import { PrintQueue } from './queue';
 import { SocketBridge } from './socket';
+import { Scanner } from './scanner';
 
 async function main() {
   const config = loadConfig();
@@ -33,8 +34,13 @@ async function main() {
   bridge = new SocketBridge(config, api, state, queue);
   await bridge.start();
 
+  // 시리얼(COM) 스캐너 — scanPort 설정 시에만 활성 (캐시어 포커스 무관 스캔)
+  const scanner = new Scanner(config, api);
+  scanner.start();
+
   const shutdown = (signal: string) => {
     log.info(`${signal} received — shutting down`);
+    scanner.stop();
     queue.stop();
     bridge.stop();
     process.exit(0);

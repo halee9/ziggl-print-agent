@@ -34,6 +34,13 @@ export interface AgentConfig {
   logLevel: 'debug' | 'info' | 'warn' | 'error';
   /** data 디렉토리 (state.json, logs/) — 기본: config.json 옆 data/ */
   dataDir: string;
+  /** 시리얼(COM) 스캐너 포트 (예: "COM3"). 빈 값이면 스캐너 비활성.
+   *  스캐너를 USB Virtual COM 모드로 설정하면 포커스와 무관하게 스캔 처리됨 */
+  scanPort: string;
+  /** 시리얼 보드레이트 (Netum USB-COM 기본 9600) */
+  scanBaud: number;
+  /** 티켓 스캔 시 전환할 상태: 'complete'=캐시어→COMPLETED, 'ready'=주방→READY */
+  scanStation: 'ready' | 'complete';
 }
 
 const DEFAULTS = {
@@ -53,6 +60,9 @@ const DEFAULTS = {
   timezoneFallback: 'America/Los_Angeles',
   maxTicketAgeMinutes: 30,
   logLevel: 'info' as const,
+  scanPort: '',
+  scanBaud: 9600,
+  scanStation: 'complete' as const,
 };
 
 export function loadConfig(): AgentConfig {
@@ -89,6 +99,9 @@ export function loadConfig(): AgentConfig {
     maxTicketAgeMinutes: raw.maxTicketAgeMinutes ?? DEFAULTS.maxTicketAgeMinutes,
     logLevel: raw.logLevel ?? DEFAULTS.logLevel,
     dataDir: raw.dataDir ?? path.join(path.dirname(configPath), 'data'),
+    scanPort: raw.scanPort ?? DEFAULTS.scanPort,
+    scanBaud: raw.scanBaud ?? DEFAULTS.scanBaud,
+    scanStation: raw.scanStation === 'ready' ? 'ready' : DEFAULTS.scanStation,
   };
 
   if (!Number.isInteger(config.printerPort) || config.printerPort < 1 || config.printerPort > 65535) {
