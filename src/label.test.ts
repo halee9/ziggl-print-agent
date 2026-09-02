@@ -68,3 +68,62 @@ describe('renderLabelWithQr', () => {
     expect(Math.min(...runs)).toBeGreaterThanOrEqual(4);
   });
 });
+
+describe('parseLabelNote — DoorDash 단체주문 수령인 파싱', () => {
+  it('"Label: Jared A" → labelName, restNote 없음', async () => {
+    const { parseLabelNote } = await import('./label');
+    expect(parseLabelNote('Label: Jared A')).toEqual({ labelName: 'Jared A', restNote: null });
+  });
+
+  it('대소문자/공백 허용', async () => {
+    const { parseLabelNote } = await import('./label');
+    expect(parseLabelNote('  label:   Melissa L  ')).toEqual({ labelName: 'Melissa L', restNote: null });
+    expect(parseLabelNote('LABEL: Cheryl B')).toEqual({ labelName: 'Cheryl B', restNote: null });
+  });
+
+  it('멀티라인: Label 줄만 추출, 나머지는 restNote', async () => {
+    const { parseLabelNote } = await import('./label');
+    expect(parseLabelNote('extra sauce please\nLabel: Anthony W')).toEqual({
+      labelName: 'Anthony W',
+      restNote: 'extra sauce please',
+    });
+  });
+
+
+  it('UberEats 형식: "(Please label for 이름)"', async () => {
+    const { parseLabelNote } = await import('./label');
+    expect(parseLabelNote('(Please label for Marshall)')).toEqual({ labelName: 'Marshall', restNote: null });
+    expect(parseLabelNote('(Please label for Connor Cserepes)')).toEqual({ labelName: 'Connor Cserepes', restNote: null });
+    expect(parseLabelNote('Please label for David O')).toEqual({ labelName: 'David O', restNote: null });
+  });
+
+  it('매치 없으면 원문 유지', async () => {
+    const { parseLabelNote } = await import('./label');
+    expect(parseLabelNote('no onions')).toEqual({ labelName: null, restNote: 'no onions' });
+    expect(parseLabelNote('labeling test')).toEqual({ labelName: null, restNote: 'labeling test' });
+    expect(parseLabelNote(undefined)).toEqual({ labelName: null, restNote: null });
+    expect(parseLabelNote('Label:')).toEqual({ labelName: null, restNote: 'Label:' });
+  });
+});
+
+describe('buildLabelSvg — Label 이름 인쇄', () => {
+  it('labelName은 크게(bold 30) 인쇄되고 "Label:" 원문은 note로 안 찍힘', async () => {
+    const { buildLabelSvg, expandItems: expand } = await import('./label');
+    const items = expand([
+      { name: 'Pepsi', quantity: '1', modifiers: [], totalMoney: 250, note: 'Label: Jared A' },
+    ] as unknown as KDSOrder['lineItems']);
+    const svg = buildLabelSvg(items[0], '124', { widthPx: 406, heightPx: 203 });
+    expect(svg).toContain('>Jared A</text>');
+    expect(svg).toContain('font-size="30"');
+    expect(svg).not.toContain('Label:');
+  });
+
+  it('일반 note는 기존처럼 * 프리픽스로 인쇄', async () => {
+    const { buildLabelSvg, expandItems: expand } = await import('./label');
+    const items = expand([
+      { name: 'Pepsi', quantity: '1', modifiers: [], totalMoney: 250, note: 'no ice' },
+    ] as unknown as KDSOrder['lineItems']);
+    const svg = buildLabelSvg(items[0], '124', { widthPx: 406, heightPx: 203 });
+    expect(svg).toContain('* no ice');
+  });
+});

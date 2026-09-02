@@ -37,6 +37,32 @@ export function expandItems(
   return result;
 }
 
+/**
+ * 단체주문 아이템 note에서 수령인 이름 파싱.
+ * - DoorDash: "Label: Jared A"
+ * - UberEats: "(Please label for Marshall)"
+ * 매치되는 첫 줄의 이름을 labelName으로, 나머지 줄은 restNote로 반환.
+ * (ziggl-pos/admin utils.ts에 동일 구현 — no shared packages 관례)
+ */
+const LABEL_NOTE_PATTERNS = [
+  /^\s*label:\s*(\S.*?)\s*$/i,
+  /^\s*\(?\s*please label for\s+(\S.*?)\s*\)?\s*$/i,
+];
+
+export function parseLabelNote(note?: string): { labelName: string | null; restNote: string | null } {
+  if (!note) return { labelName: null, restNote: null };
+  const lines = note.split('\n');
+  const idx = lines.findIndex((l) => LABEL_NOTE_PATTERNS.some((re) => re.test(l)));
+  if (idx === -1) return { labelName: null, restNote: note };
+  let labelName = '';
+  for (const re of LABEL_NOTE_PATTERNS) {
+    const m = lines[idx].match(re);
+    if (m) { labelName = m[1].trim(); break; }
+  }
+  const rest = lines.filter((_, i) => i !== idx).join('\n').trim();
+  return { labelName, restNote: rest || null };
+}
+
 function xmlEsc(s: string): string {
   return String(s ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -75,14 +101,17 @@ export function buildLabelSvg(item: LabelItem, displayId: string, opts: LabelRen
       lines.push({ text: chunk, size, bold, italic });
     }
   };
+  // 단체주문(DoorDash/UberEats): note의 수령인 이름 — 상단에 크게 인쇄
+  const { labelName, restNote } = parseLabelNote(item.note);
   push(`ORDER #${displayId.padStart(3, '0')}`, 26, true);
+  if (labelName) push(labelName, 30, true, false, 1);
   push(item.name, 35, true, false, 2);
   if (item.variationName) push(item.variationName, 24, false);
   for (const m of item.modifiers) {
     const price = m.price > 0 ? ` ${formatMoney(m.price * m.qty)}` : '';
     push(`${m.qty > 1 ? `${m.qty}x ` : ''}${m.name}${price}`, 24, false);
   }
-  if (item.note) push(`* ${item.note}`, 21, false, true);
+  if (restNote) push(`* ${restNote}`, 21, false, true);
 
   const lineGap = 6;
   const padding = 10;
