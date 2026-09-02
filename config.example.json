@@ -1,6 +1,7 @@
 {
   "serverUrl": "https://api.ziggl.app",
   "restaurantCode": "midori",
+  "apiKey": "zgl_...",
   "printerIp": "192.168.1.50",
   "printerPort": 9100,
   "cpl": 32,

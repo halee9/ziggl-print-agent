@@ -46,8 +46,13 @@ export function normalizeDbOrder(row: any): KDSOrder {
 export class Api {
   constructor(private config: AgentConfig) {}
 
+  private authHeaders(): Record<string, string> {
+    return this.config.apiKey ? { Authorization: `Bearer ${this.config.apiKey}` } : {};
+  }
+
   private async get(path: string): Promise<any> {
     const res = await fetch(`${this.config.serverUrl}${path}`, {
+      headers: this.authHeaders(),
       signal: AbortSignal.timeout(15_000),
     });
     if (!res.ok) throw new Error(`GET ${path} → ${res.status}`);
@@ -57,7 +62,7 @@ export class Api {
   private async send(method: string, path: string, body: any): Promise<number> {
     const res = await fetch(`${this.config.serverUrl}${path}`, {
       method,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...this.authHeaders() },
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(15_000),
     });

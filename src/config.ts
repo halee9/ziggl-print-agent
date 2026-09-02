@@ -4,6 +4,8 @@ import path from 'node:path';
 export interface AgentConfig {
   serverUrl: string;
   restaurantCode: string;
+  /** 서버 인증용 staff API 키 (zgl_...). 서버 AUTH_ENFORCE 전엔 비어 있어도 동작 */
+  apiKey?: string;
   printerIp: string;
   printerPort: number;
   /** 글자 밀도(줄당 글자수). 용지 폭(48)보다 작을수록 글자가 커짐. 권장 32-42 */
@@ -81,6 +83,7 @@ export function loadConfig(): AgentConfig {
   const config: AgentConfig = {
     serverUrl: raw.serverUrl.replace(/\/$/, ''),
     restaurantCode: raw.restaurantCode.toLowerCase(),
+    apiKey: typeof raw.apiKey === 'string' ? raw.apiKey.trim() : '',
     printerIp: raw.printerIp,
     printerPort: raw.printerPort ?? DEFAULTS.printerPort,
     cpl: raw.cpl ?? DEFAULTS.cpl,
