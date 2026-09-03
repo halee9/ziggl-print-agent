@@ -101,20 +101,17 @@ export function buildLabelSvg(item: LabelItem, displayId: string, opts: LabelRen
       lines.push({ text: chunk, size, bold, italic });
     }
   };
-  // 단체주문(DoorDash/UberEats): note의 수령인 이름 — 주문번호와 한 줄로 합쳐
-  // 세로 공간 절약 (이름 없을 때와 동일한 높이 유지)
+  // 단체주문(DoorDash/UberEats): note의 수령인 이름 — 상단에 크게 인쇄
   const { labelName, restNote } = parseLabelNote(item.note);
-  if (labelName) {
-    push(`#${displayId.padStart(3, '0')} ${labelName}`, 28, true, false, 2);
-  } else {
-    push(`ORDER #${displayId.padStart(3, '0')}`, 26, true);
-  }
+  push(`ORDER #${displayId.padStart(3, '0')}`, 26, true);
+  if (labelName) push(labelName, 30, true, false, 1);
   push(item.name, 35, true, false, 2);
   if (item.variationName) push(item.variationName, 24, false);
-  for (const m of item.modifiers) {
-    const price = m.price > 0 ? ` ${formatMoney(m.price * m.qty)}` : '';
-    push(`${m.qty > 1 ? `${m.qty}x ` : ''}${m.name}${price}`, 24, false);
-  }
+  // 모디파이어는 한 줄씩 대신 ", " 구분 인라인 — 세로 공간 절약 (폭 넘치면 자동 줄바꿈)
+  const modsInline = item.modifiers
+    .map((m) => `${m.qty > 1 ? `${m.qty}x ` : ''}${m.name}${m.price > 0 ? ` ${formatMoney(m.price * m.qty)}` : ''}`)
+    .join(', ');
+  if (modsInline) push(modsInline, 21, false);  // 인라인이라 한 단계 작게 — 줄 수 최소화
   if (restNote) push(`* ${restNote}`, 21, false, true);
 
   const lineGap = 6;
