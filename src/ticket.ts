@@ -33,8 +33,21 @@ export function formatDisplayName(name: string): string {
   return `${tokens.slice(0, -1).join(' ')} ${last[0].toUpperCase()}.`;
 }
 
+/**
+ * 아이템 display 설정 조회 — 정확 일치 우선, 실패 시 이름 끝 " (변형)" 꼬리 제거 후
+ * 재시도 (키오스크가 "Snapple (Kiwi Strawberry)"로 보낸 주문도 "Snapple" 설정 적용).
+ */
+export function findItemDisplayConfig(name: string, menu: MenuDisplayConfig) {
+  const norm = (s: string) => s.toLowerCase().trim();
+  const exact = menu.menuItems.find((m) => norm(m.item_name) === norm(name));
+  if (exact) return exact;
+  const base = name.replace(/\s*\([^)]*\)\s*$/, '');
+  if (norm(base) === norm(name)) return undefined;
+  return menu.menuItems.find((m) => norm(m.item_name) === norm(base));
+}
+
 function itemLabel(name: string, menu: MenuDisplayConfig): { label: string; serverAlert: boolean } {
-  const config = menu.menuItems.find((m) => m.item_name.toLowerCase().trim() === name.toLowerCase().trim());
+  const config = findItemDisplayConfig(name, menu);
   return { label: config?.abbreviation || name, serverAlert: config?.server_alert ?? false };
 }
 

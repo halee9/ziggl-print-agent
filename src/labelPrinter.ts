@@ -6,6 +6,7 @@ import sharp from 'sharp';
 import QRCode from 'qrcode';
 import type { AgentConfig } from './config';
 import type { KDSOrder, MenuDisplayConfig } from './types';
+import { findItemDisplayConfig } from './ticket';
 import { buildLabelSvg, expandItems, type LabelItem } from './label';
 import { buildTsplJob } from './tspl';
 import { log } from './log';
@@ -96,7 +97,7 @@ export async function printOrderLabels(order: KDSOrder, config: AgentConfig, men
   // print_label=false인 아이템(소스류 등)은 레이블 제외 — POS 메뉴 관리(menu_display)에서 설정
   // 필터를 expandItems 안에서 적용해 lineIdx가 원본 배열 기준으로 유지되도록 함 (QR 좌표 정합성)
   const items = expandItems(order.lineItems, (li) => {
-    const cfg = menu?.menuItems.find((m) => m.item_name.toLowerCase().trim() === li.name.toLowerCase().trim());
+    const cfg = menu ? findItemDisplayConfig(li.name, menu) : undefined;
     return cfg?.print_label !== false;
   });
   if (items.length === 0) return 0;

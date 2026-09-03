@@ -130,3 +130,16 @@ describe('formatMoney', () => {
     expect(formatMoney(0)).toBe('$0.00');
   });
 });
+
+describe('findItemDisplayConfig — variation 꼬리 fallback', () => {
+  const menu = { menuItems: [
+    { item_name: 'Snapple', show_on_kds: false, server_alert: true },
+  ], modifiers: [] } as any;
+
+  it('"Snapple (Kiwi Strawberry)" → Snapple 설정 매칭 (서버알림 적용)', async () => {
+    const { findItemDisplayConfig } = await import('./ticket');
+    expect(findItemDisplayConfig('Snapple (Kiwi Strawberry)', menu)?.server_alert).toBe(true);
+    expect(findItemDisplayConfig('Snapple', menu)?.item_name).toBe('Snapple');
+    expect(findItemDisplayConfig('Pepsi (L)', menu)).toBeUndefined();
+  });
+});
