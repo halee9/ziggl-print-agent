@@ -113,9 +113,11 @@ describe('buildLabelSvg — Label 이름 인쇄', () => {
       { name: 'Pepsi', quantity: '1', modifiers: [], totalMoney: 250, note: 'Label: Jared A' },
     ] as unknown as KDSOrder['lineItems']);
     const svg = buildLabelSvg(items[0], '124', { widthPx: 406, heightPx: 203 });
-    expect(svg).toContain('>Jared A</text>');
-    expect(svg).toContain('font-size="30"');
+    // 주문번호와 한 줄로 병합 (세로 공간 절약)
+    expect(svg).toContain('>#124 Jared A</text>');
+    expect(svg).toContain('font-size="28"');
     expect(svg).not.toContain('Label:');
+    expect(svg).not.toContain('ORDER #');
   });
 
   it('일반 note는 기존처럼 * 프리픽스로 인쇄', async () => {

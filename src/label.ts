@@ -101,10 +101,14 @@ export function buildLabelSvg(item: LabelItem, displayId: string, opts: LabelRen
       lines.push({ text: chunk, size, bold, italic });
     }
   };
-  // 단체주문(DoorDash/UberEats): note의 수령인 이름 — 상단에 크게 인쇄
+  // 단체주문(DoorDash/UberEats): note의 수령인 이름 — 주문번호와 한 줄로 합쳐
+  // 세로 공간 절약 (이름 없을 때와 동일한 높이 유지)
   const { labelName, restNote } = parseLabelNote(item.note);
-  push(`ORDER #${displayId.padStart(3, '0')}`, 26, true);
-  if (labelName) push(labelName, 30, true, false, 1);
+  if (labelName) {
+    push(`#${displayId.padStart(3, '0')} ${labelName}`, 28, true, false, 2);
+  } else {
+    push(`ORDER #${displayId.padStart(3, '0')}`, 26, true);
+  }
   push(item.name, 35, true, false, 2);
   if (item.variationName) push(item.variationName, 24, false);
   for (const m of item.modifiers) {
