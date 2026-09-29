@@ -141,6 +141,7 @@ POS의 "Print Items" 버튼(아이템×수량마다 스티커 1장)을 Rollo로 
    "labelDpi": 203
    ```
 4. `npm run test-label` — 샘플 레이블 실물 출력 확인 (`-- --preview-only` 는 data/label-*.png만 생성)
+   `npm run test-date-label` — 날짜 레이블(요일·날짜/시각) 출력 (`-- --preview-only --at <ISO> --tz <TZ> --copies N`, PNG는 data/date-label.png)
 5. 서비스 재시작 → 이후 POS "Print Items" 클릭이 Rollo로 출력됨.
    에이전트가 꺼져 있으면 자동으로 브라우저 인쇄 폴백.
 

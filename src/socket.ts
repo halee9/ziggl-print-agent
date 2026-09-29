@@ -4,7 +4,8 @@ import type { Api } from './api';
 import type { StateStore } from './state';
 import type { PrintQueue } from './queue';
 import type { KDSOrder, MenuDisplayConfig } from './types';
-import { printOrderLabels } from './labelPrinter';
+import { printOrderLabels, printDateLabel } from './labelPrinter';
+import { parseDateLabelPayload, type DateLabelPayload } from './dateLabel';
 import { log } from './log';
 
 const ORDER_CACHE_MAX = 300;
@@ -69,6 +70,16 @@ export class SocketBridge {
     }
   }
 
+  /** 날짜 레이블 인쇄 — 수동 액션, 재시도 없음 (실패는 로그) */
+  private async printDateLabel(payload: DateLabelPayload) {
+    try {
+      const count = await printDateLabel(payload, this.config);
+      log.info(`printed ${count} date label(s) (${payload.printedAt} ${payload.timezone})`);
+    } catch (err: any) {
+      log.error(`print:date-label failed: ${err.message}`);
+    }
+  }
+
   private cacheOrder(order: KDSOrder) {
     this.orderCache.set(order.id, order);
     if (this.orderCache.size > ORDER_CACHE_MAX) {
@@ -107,6 +118,14 @@ export class SocketBridge {
       if (!payload?.orderId || !this.config.labelPrinterName) return;
       log.info(`print:labels received for ${payload.orderId}`);
       void this.printLabels(payload.orderId);
+    });
+
+    // POS "Date Label" → 요일·날짜·시각 레이블(Rollo) copies장 인쇄
+    this.socket.on('print:date-label', (raw: unknown) => {
+      const payload = parseDateLabelPayload(raw, this.config);
+      if (!payload) return;
+      log.info(`print:date-label received (copies=${payload.copies})`);
+      void this.printDateLabel(payload);
     });
 
     this.socket.on('disconnect', (reason) => {

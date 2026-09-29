@@ -8,6 +8,7 @@ import type { AgentConfig } from './config';
 import type { KDSOrder, MenuDisplayConfig } from './types';
 import { findItemDisplayConfig } from './ticket';
 import { buildLabelSvg, expandItems, type LabelItem } from './label';
+import { buildDateLabelSvg, formatDateLabel, type DateLabelPayload } from './dateLabel';
 import { buildTsplJob } from './tspl';
 import { log } from './log';
 
@@ -92,6 +93,59 @@ function sendRaw(printerName: string, jobFile: string): Promise<void> {
   });
 }
 
+export type LabelJobSender = (job: Buffer, printerName: string, tag: string) => Promise<void>;
+
+/** TSPL 잡을 Rollo로 RAW 전송 (Windows 전용 — 그 외 플랫폼은 스킵 로그) */
+export const sendLabelJob: LabelJobSender = async (job, printerName, tag) => {
+  if (process.platform !== 'win32') {
+    log.warn(`labels: non-Windows platform — ${tag} rendered, print skipped`);
+    return;
+  }
+  const tmp = path.join(os.tmpdir(), `ziggl-${tag}-${Date.now()}.prn`);
+  fs.writeFileSync(tmp, job);
+  try {
+    await sendRaw(printerName, tmp);
+    log.info(`TSPL job ${tag} sent to "${printerName}"`);
+  } finally {
+    try { fs.unlinkSync(tmp); } catch { /* 정리 실패 무시 */ }
+  }
+};
+
+function labelJobOptions(config: AgentConfig) {
+  return {
+    widthMm: config.labelWidthIn * 25.4,
+    heightMm: config.labelHeightIn * 25.4,
+    gapMm: config.labelGapMm,
+    density: config.labelDensity,
+  };
+}
+
+/** 날짜 레이블 1장 PNG (요일·날짜 / 시각) */
+export async function renderDateLabelPng(
+  printedAt: string,
+  timezone: string,
+  config: Pick<AgentConfig, 'labelWidthIn' | 'labelHeightIn' | 'labelDpi' | 'fontFamily'>,
+): Promise<Buffer> {
+  const widthPx = Math.round(config.labelWidthIn * config.labelDpi);
+  const heightPx = Math.round(config.labelHeightIn * config.labelDpi);
+  const { line1, line2 } = formatDateLabel(printedAt, timezone);
+  const svg = buildDateLabelSvg(line1, line2, { widthPx, heightPx, fontFamily: config.fontFamily || undefined });
+  return renderLabelPng(svg, widthPx, heightPx);
+}
+
+/** 날짜 레이블 copies장(1–10)을 단일 TSPL 잡으로 인쇄. 장수 반환 */
+export async function printDateLabel(
+  payload: DateLabelPayload,
+  config: AgentConfig,
+  send: LabelJobSender = sendLabelJob,
+): Promise<number> {
+  const copies = Math.min(10, Math.max(1, Math.floor(Number(payload.copies)) || 1));
+  const png = await renderDateLabelPng(payload.printedAt, payload.timezone, config);
+  const job = await buildTsplJob(Array(copies).fill(png), labelJobOptions(config));
+  await send(job, config.labelPrinterName, 'date-label');
+  return copies;
+}
+
 /** 주문의 모든 레이블(아이템×수량)을 단일 TSPL 잡으로 인쇄. 장수 반환 */
 export async function printOrderLabels(order: KDSOrder, config: AgentConfig, menu?: MenuDisplayConfig): Promise<number> {
   // print_label=false인 아이템(소스류 등)은 레이블 제외 — POS 메뉴 관리(menu_display)에서 설정
@@ -112,25 +166,9 @@ export async function printOrderLabels(order: KDSOrder, config: AgentConfig, men
     }));
   }
 
-  const job = await buildTsplJob(pngs, {
-    widthMm: config.labelWidthIn * 25.4,
-    heightMm: config.labelHeightIn * 25.4,
-    gapMm: config.labelGapMm,
-    density: config.labelDensity,
-  });
+  const job = await buildTsplJob(pngs, labelJobOptions(config));
 
-  if (process.platform !== 'win32') {
-    log.warn(`labels: non-Windows platform — rendered ${pngs.length} label(s), print skipped`);
-    return pngs.length;
-  }
-
-  const tmp = path.join(os.tmpdir(), `ziggl-labels-${order.id}-${Date.now()}.prn`);
-  fs.writeFileSync(tmp, job);
-  try {
-    await sendRaw(config.labelPrinterName, tmp);
-    log.info(`${pngs.length} label(s) sent to "${config.labelPrinterName}" as one TSPL job (#${order.displayId})`);
-  } finally {
-    try { fs.unlinkSync(tmp); } catch { /* 정리 실패 무시 */ }
-  }
+  await sendLabelJob(job, config.labelPrinterName, `labels-${order.id}`);
+  log.info(`${pngs.length} label(s) for #${order.displayId} as one TSPL job`);
   return pngs.length;
 }

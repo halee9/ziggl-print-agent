@@ -13,6 +13,7 @@
     "test:watch": "vitest",
     "test-print": "tsx src/cli/test-print.ts",
     "test-label": "tsx src/cli/test-label.ts",
+    "test-date-label": "tsx src/cli/test-date-label.ts",
     "preview": "tsx src/cli/preview.ts"
   },
   "dependencies": {
