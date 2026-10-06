@@ -112,14 +112,17 @@ export class Api {
     }
   }
 
-  /** 서버알림 약어 설정 */
-  async fetchMenuDisplay(): Promise<MenuDisplayConfig> {
+  /**
+   * 서버알림 약어 설정. 실패 시 null — 호출자가 이전 설정을 유지해야 함
+   * (빈 설정으로 덮으면 다음 티켓이 약어/CONFIRM 섹션 없이 인쇄됨)
+   */
+  async fetchMenuDisplay(): Promise<MenuDisplayConfig | null> {
     try {
       const data = await this.get(`/api/menu-display/${this.config.restaurantCode}`);
-      return { menuItems: data.menuItems ?? [], modifiers: data.modifiers ?? [] };
+      return { menuItems: data?.menuItems ?? [], modifiers: data?.modifiers ?? [] };
     } catch (err: any) {
-      log.warn(`fetchMenuDisplay failed: ${err.message} — server alerts will use full names`);
-      return { menuItems: [], modifiers: [] };
+      log.warn(`fetchMenuDisplay failed: ${err.message} — keeping previous config`);
+      return null;
     }
   }
 

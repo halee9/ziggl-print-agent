@@ -9,6 +9,10 @@ import { parseDateLabelPayload, type DateLabelPayload } from './dateLabel';
 import { log } from './log';
 
 const ORDER_CACHE_MAX = 300;
+const MENU_REFRESH_MS = 10 * 60_000;
+const MENU_RETRY_MS = 60_000;
+
+const isEmptyMenu = (m: MenuDisplayConfig) => m.menuItems.length === 0 && m.modifiers.length === 0;
 
 export class SocketBridge {
   private socket: Socket;
@@ -16,6 +20,9 @@ export class SocketBridge {
   private orderCache = new Map<string, KDSOrder>();
   private menu: MenuDisplayConfig = { menuItems: [], modifiers: [] };
   private timezone: string;
+  private menuTick: NodeJS.Timeout | null = null;
+  /** 메뉴 설정 fetch 실패 후 1회 빠른 재시도 (중복 예약 방지) */
+  private menuRetry: NodeJS.Timeout | null = null;
 
   constructor(
     private config: AgentConfig,
@@ -39,19 +46,57 @@ export class SocketBridge {
 
   async start() {
     this.timezone = await this.api.fetchTimezone();
-    this.menu = await this.api.fetchMenuDisplay();
+    const menu = await this.api.fetchMenuDisplay();
+    if (menu) {
+      this.menu = menu;
+    } else {
+      this.menu = { menuItems: [], modifiers: [] };
+      log.warn('menu-display initial load failed — server alerts/abbreviations disabled until next successful refresh');
+      this.scheduleMenuRetry();
+    }
     log.info(`timezone=${this.timezone}, menu-display: ${this.menu.menuItems.length} items / ${this.menu.modifiers.length} modifiers`);
     // 10분마다 메뉴 표시 설정 리프레시 (이벤트 누락 대비)
-    const menuTick = setInterval(() => void this.refreshMenu(), 10 * 60_000);
-    menuTick.unref?.();
+    this.menuTick = setInterval(() => void this.refreshMenu(), MENU_REFRESH_MS);
+    this.menuTick.unref?.();
   }
 
   stop() {
+    if (this.menuTick) clearInterval(this.menuTick);
+    this.menuTick = null;
+    if (this.menuRetry) clearTimeout(this.menuRetry);
+    this.menuRetry = null;
     this.socket.disconnect();
   }
 
+  /**
+   * 메뉴 표시 설정 리프레시. 실패(null)나 의심스러운 빈 응답이면 이전 설정 유지 —
+   * 한 번의 타임아웃으로 좋은 설정이 지워져 티켓에서 CONFIRM 섹션이 사라졌던 버그 대응.
+   */
   private async refreshMenu() {
-    this.menu = await this.api.fetchMenuDisplay();
+    const menu = await this.api.fetchMenuDisplay();
+    if (!menu) {
+      log.warn(`menu-display refresh failed — keeping previous config (${this.menu.menuItems.length} items / ${this.menu.modifiers.length} modifiers), retry in ${MENU_RETRY_MS / 1000}s`);
+      this.scheduleMenuRetry();
+      return;
+    }
+    if (isEmptyMenu(menu) && !isEmptyMenu(this.menu)) {
+      log.warn(`menu-display refresh returned empty config — suspicious, keeping previous (${this.menu.menuItems.length} items / ${this.menu.modifiers.length} modifiers)`);
+      return;
+    }
+    this.menu = menu;
+    if (this.menuRetry) {
+      clearTimeout(this.menuRetry);
+      this.menuRetry = null;
+    }
+  }
+
+  private scheduleMenuRetry() {
+    if (this.menuRetry) return; // 이미 예약됨 — 쌓지 않음
+    this.menuRetry = setTimeout(() => {
+      this.menuRetry = null;
+      void this.refreshMenu();
+    }, MENU_RETRY_MS);
+    this.menuRetry.unref?.();
   }
 
   /** 레이블 인쇄 — 티켓 큐와 별개로 즉시 처리 (수동 액션이라 재시도 큐 없음, 실패는 로그) */
