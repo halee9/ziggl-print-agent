@@ -1,6 +1,6 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import net from 'node:net';
-import { sendToPrinter } from './printer';
+import { sendToPrinter, CONNECT_TIMEOUT_MS } from './printer';
 
 let server: net.Server | null = null;
 afterEach(() => {
@@ -30,4 +30,10 @@ describe('sendToPrinter', () => {
   it('rejects when nothing is listening (connection refused)', async () => {
     await expect(sendToPrinter(Buffer.from('x'), '127.0.0.1', 1)).rejects.toThrow();
   }, 10_000);
+
+  // LAN 프린터 연결은 수 ms — 응답 없는 프린터를 오래 기다리면 재시도까지 티켓이 수 초 늦어짐
+  // (2026-10-28/29 매장: 5s 타임아웃 + 2s 대기로 티켓 ~8초 지연)
+  it('uses a short connect timeout suitable for a LAN printer', () => {
+    expect(CONNECT_TIMEOUT_MS).toBeLessThanOrEqual(2_000);
+  });
 });

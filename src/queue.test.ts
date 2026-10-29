@@ -139,6 +139,16 @@ describe('PrintQueue', () => {
     queue.stop();
   });
 
+  it('retries a failed print quickly (first retry well under 1s)', async () => {
+    mockedSend.mockRejectedValueOnce(new Error('connect timeout'));
+    const { queue, state } = makeQueue();
+    queue.enqueue('o1', 'auto');
+    await new Promise((r) => setTimeout(r, 600));
+    expect(mockedSend).toHaveBeenCalledTimes(2);
+    expect(state.isPrinted('o1')).toBe(true);
+    queue.stop();
+  });
+
   it('drops jobs older than maxTicketAgeMinutes without printing', async () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ziggl-queue-test-'));
     const state1 = new StateStore(dir);

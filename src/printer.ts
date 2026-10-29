@@ -1,7 +1,8 @@
 import net from 'node:net';
 import { log } from './log';
 
-const CONNECT_TIMEOUT_MS = 5_000;
+/** LAN 프린터 연결은 수 ms — 응답 없으면 빨리 포기하고 재시도 (5s일 때 가끔 티켓 ~8초 지연) */
+export const CONNECT_TIMEOUT_MS = 1_500;
 const SEND_TIMEOUT_MS = 20_000;
 /** 데이터 플러시 후 소켓 정리까지의 여유 */
 const CLOSE_GRACE_MS = 500;

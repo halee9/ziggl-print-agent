@@ -7,7 +7,8 @@ import { renderStarGraphic } from './render';
 import { sendToPrinter } from './printer';
 import { log } from './log';
 
-const RETRY_DELAYS_MS = [2_000, 8_000, 30_000];
+// 첫 재시도는 즉시에 가깝게 — 프린터가 연결을 한 번 놓쳐도 다음 시도는 대개 바로 성공
+const RETRY_DELAYS_MS = [300, 8_000, 30_000];
 const OUTAGE_TICK_MS = 60_000;
 
 type JobResult =
